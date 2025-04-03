@@ -18,7 +18,7 @@ public class MainGame extends ApplicationAdapter {
     private Texture playerSheet;
     private Texture wallSheet;
     private Texture enemySheet;
-    private TextureRegion wallRegion;
+    private TextureRegion[] wallRegion;
     private TextureRegion floorRegion;
     private TextureRegion[] walkLeft, walkRight, walkUp, walkDown;
     private float animationTime;
@@ -57,8 +57,13 @@ public class MainGame extends ApplicationAdapter {
             walkUp[i] = new TextureRegion(playerSheet, i * 64, 64, 64, 64);
             walkDown[i] = new TextureRegion(playerSheet, i * 64, 0, 64, 64);
         }
+// Загружаем текстуры стен (первые 5 тайлов в верхнем ряду)
+        wallRegion = new TextureRegion[5];
+        for (int i = 0; i < 5; i++) {
+            wallRegion[i] = new TextureRegion(wallSheet, i * 64, 0, 64, 64);
+        }
 
-        wallRegion = new TextureRegion(wallSheet, 128, 256, 64, 64);
+        // Пол (возьмём из нижнего ряда, например, первый тайл)
         floorRegion = new TextureRegion(wallSheet, 0, 384, 64, 64);
 
         animationTime = 0f;
@@ -72,25 +77,72 @@ public class MainGame extends ApplicationAdapter {
 
     private void generateLevel() {
         levelMap = new int[20][15];
+        // Заполняем всё полом
         for (int x = 0; x < 20; x++) {
             for (int y = 0; y < 15; y++) {
-                if (x == 0 || x == 19 || y == 0 || y == 14) {
-                    levelMap[x][y] = 1;
+                levelMap[x][y] = 0; // 0 — пол
+            }
+        }
+
+        // Создаём границы уровня
+        for (int x = 0; x < 20; x++) {
+            levelMap[x][0] = 1; // Нижняя стена
+            levelMap[x][14] = 1; // Верхняя стена
+        }
+        for (int y = 0; y < 15; y++) {
+            levelMap[0][y] = 1; // Левая стена
+            levelMap[19][y] = 1; // Правая стена
+        }
+
+        // Создаём несколько комнат
+        generateRoom(2, 2, 5, 5); // Комната 1
+        generateRoom(8, 8, 5, 5); // Комната 2
+        generateRoom(14, 2, 4, 4); // Комната 3
+
+        // Соединяем комнаты коридорами
+        connectRooms(4, 4, 10, 10); // Коридор между комнатами 1 и 2
+        connectRooms(10, 10, 16, 4); // Коридор между комнатами 2 и 3
+
+        // Убедимся, что стартовая позиция свободна
+        levelMap[3][3] = 0;
+    }
+
+    private void generateRoom(int startX, int startY, int width, int height) {
+        // Создаём стены комнаты
+        for (int x = startX; x < startX + width; x++) {
+            for (int y = startY; y < startY + height; y++) {
+                if (x == startX || x == startX + width - 1 || y == startY || y == startY + height - 1) {
+                    levelMap[x][y] = 1; // Стены
                 } else {
-                    levelMap[x][y] = Math.random() < 0.2 ? 1 : 0;
+                    levelMap[x][y] = 0; // Пол внутри комнаты
                 }
             }
         }
-        levelMap[3][3] = 0; // Свободная стартовая позиция
+    }
+
+    private void connectRooms(int x1, int y1, int x2, int y2) {
+        // Горизонтальный коридор
+        int startX = Math.min(x1, x2);
+        int endX = Math.max(x1, x2);
+        for (int x = startX; x <= endX; x++) {
+            levelMap[x][y1] = 0; // Пол коридора
+        }
+
+        // Вертикальный коридор
+        int startY = Math.min(y1, y2);
+        int endY = Math.max(y1, y2);
+        for (int y = startY; y <= endY; y++) {
+            levelMap[x2][y] = 0; // Пол коридора
+        }
     }
 
     private void spawnEnemies(int count) {
         for (int i = 0; i < count; i++) {
             float x, y;
             do {
-                x = MathUtils.random(1, 18) * TILE_SIZE; // Случайная позиция
+                x = MathUtils.random(1, 18) * TILE_SIZE;
                 y = MathUtils.random(1, 13) * TILE_SIZE;
-            } while (levelMap[(int)(x / TILE_SIZE)][(int)(y / TILE_SIZE)] == 1); // Пока не найдём свободное место
+            } while (levelMap[(int)(x / TILE_SIZE)][(int)(y / TILE_SIZE)] == 1);
             enemies.add(new Enemy(enemySheet, x, y));
         }
     }
@@ -135,11 +187,13 @@ public class MainGame extends ApplicationAdapter {
                 }
             }
         }
-        // Отрисовка стен
+        // Отрисовка стен с выбором текстуры
         for (int x = 0; x < 20; x++) {
             for (int y = 0; y < 15; y++) {
                 if (levelMap[x][y] == 1) {
-                    batch.draw(wallRegion, x * TILE_SIZE, y * TILE_SIZE);
+                    // Выбираем текстуру стены в зависимости от соседей
+                    TextureRegion wallTexture = chooseWallTexture(x, y);
+                    batch.draw(wallTexture, x * TILE_SIZE, y * TILE_SIZE);
                 }
             }
         }
@@ -176,15 +230,44 @@ public class MainGame extends ApplicationAdapter {
         }
     }
 
+    private TextureRegion chooseWallTexture(int x, int y) {
+        // Простая логика выбора текстуры стены на основе соседей
+        boolean top = y < 14 && levelMap[x][y + 1] == 1;
+        boolean bottom = y > 0 && levelMap[x][y - 1] == 1;
+        boolean left = x > 0 && levelMap[x - 1][y] == 1;
+        boolean right = x < 19 && levelMap[x + 1][y] == 1;
+
+        if (top && bottom && left && right) {
+            return wallRegion[0]; // Полностью окружённая стена
+        } else if (top && bottom && left) {
+            return wallRegion[1]; // Угловая стена (например, правая сторона открыта)
+        } else if (top && bottom && right) {
+            return wallRegion[2]; // Угловая стена (левая сторона открыта)
+        } else if (top && bottom) {
+            return wallRegion[3]; // Вертикальная стена
+        } else {
+            return wallRegion[4]; // Одиночный блок или горизонтальная стена
+        }
+    }
+
     private boolean checkCollision(float x, float y) {
         int mapX = (int)(x / TILE_SIZE);
         int mapY = (int)(y / TILE_SIZE);
 
-        if (mapX < 0 || mapX >= 20 || mapY < 0 || mapY >= 15) {
-            return true;
-        }
+        int[] checkX = new int[]{(int)x / TILE_SIZE, (int)(x + TILE_SIZE - 1) / TILE_SIZE};
+        int[] checkY = new int[]{(int)y / TILE_SIZE, (int)(y + TILE_SIZE - 1) / TILE_SIZE};
 
-        return levelMap[mapX][mapY] == 1;
+        for (int cx : checkX) {
+            for (int cy : checkY) {
+                if (cx < 0 || cx >= 20 || cy < 0 || cy >= 15) {
+                    return true;
+                }
+                if (levelMap[cx][cy] == 1) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private boolean isMoving() {
@@ -204,17 +287,19 @@ public class MainGame extends ApplicationAdapter {
 
     private class Enemy {
         private float x, y;
-        private float speed = 100f; // Скорость врага
+        private float speed = 100f;
         private TextureRegion[] walkLeft, walkRight, walkUp, walkDown;
         private float animationTime;
         private int currentFrame;
         private TextureRegion[] currentAnimation;
+        private float lastX, lastY; // Для отслеживания движения
 
         public Enemy(Texture sheet, float x, float y) {
             this.x = x;
             this.y = y;
+            this.lastX = x;
+            this.lastY = y;
 
-            // Анимации врага
             walkRight = new TextureRegion[4];
             walkLeft = new TextureRegion[4];
             walkUp = new TextureRegion[4];
@@ -228,13 +313,17 @@ public class MainGame extends ApplicationAdapter {
             }
 
             animationTime = 0f;
-            currentAnimation = walkDown; // По умолчанию вниз
+            currentAnimation = walkDown;
         }
 
         public void update(float playerX, float playerY, int[][] levelMap) {
             float delta = Gdx.graphics.getDeltaTime();
             float newX = x;
             float newY = y;
+
+            // Сохраняем предыдущие координаты для проверки движения
+            lastX = x;
+            lastY = y;
 
             // Движение к игроку
             if (playerX > x) {
@@ -259,8 +348,12 @@ public class MainGame extends ApplicationAdapter {
             }
 
             // Анимация
-            animationTime += delta;
-            currentFrame = (int)(animationTime * 10) % currentAnimation.length;
+            if (isMoving()) {
+                animationTime += delta;
+                currentFrame = (int)(animationTime * 10) % currentAnimation.length;
+            } else {
+                currentFrame = 2; // Стоящий кадр, как у игрока
+            }
         }
 
         private boolean checkCollision(float x, float y, int[][] levelMap) {
