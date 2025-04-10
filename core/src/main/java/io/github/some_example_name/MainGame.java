@@ -26,11 +26,11 @@ public class MainGame extends ApplicationAdapter {
     private OrthographicCamera camera;
     private List<Enemy> enemies;
 
-    private float playerX = 100;
-    private float playerY = 100;
+    private float playerX; // Убраны жёсткие значения
+    private float playerY; // Убраны жёсткие значения
     private float playerSpeed = 200f;
 
-    private static final int TILE_SIZE = 64; // Исправлено на 64 для соответствия текстурам
+    private static final int TILE_SIZE = 64;
 
     private int[][] levelMap;
 
@@ -57,7 +57,8 @@ public class MainGame extends ApplicationAdapter {
             walkUp[i] = new TextureRegion(playerSheet, i * 64, 64, 64, 64);
             walkDown[i] = new TextureRegion(playerSheet, i * 64, 0, 64, 64);
         }
-// Загружаем текстуры стен (первые 5 тайлов в верхнем ряду)
+
+        // Загружаем текстуры стен (первые 5 тайлов в верхнем ряду)
         wallRegion = new TextureRegion[5];
         for (int i = 0; i < 5; i++) {
             wallRegion[i] = new TextureRegion(wallSheet, i * 64, 0, 64, 64);
@@ -69,6 +70,9 @@ public class MainGame extends ApplicationAdapter {
         animationTime = 0f;
 
         generateLevel();
+
+        // Устанавливаем начальную позицию игрока
+        setPlayerStartPosition();
 
         // Инициализация врагов
         enemies = new ArrayList<>();
@@ -136,6 +140,28 @@ public class MainGame extends ApplicationAdapter {
         }
     }
 
+    private void setPlayerStartPosition() {
+        // Устанавливаем игрока в клетку [3][3], которая гарантированно свободна
+        int startX = 3; // Координата X в тайлах
+        int startY = 3; // Координата Y в тайлах
+        playerX = startX * TILE_SIZE;
+        playerY = startY * TILE_SIZE;
+
+        // Дополнительная проверка на всякий случай
+        if (levelMap[startX][startY] != 0) {
+            // Если клетка [3][3] почему-то занята, ищем ближайшую свободную
+            for (int x = 1; x < 19; x++) {
+                for (int y = 1; y < 14; y++) {
+                    if (levelMap[x][y] == 0) {
+                        playerX = x * TILE_SIZE;
+                        playerY = y * TILE_SIZE;
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
     private void spawnEnemies(int count) {
         for (int i = 0; i < count; i++) {
             float x, y;
@@ -166,10 +192,10 @@ public class MainGame extends ApplicationAdapter {
         batch.setProjectionMatrix(camera.combined);
 
         TextureRegion[] currentAnimation = walkDown;
-        if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) currentAnimation = walkLeft;
-        else if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) currentAnimation = walkRight;
-        else if (Gdx.input.isKeyPressed(Input.Keys.UP)) currentAnimation = walkUp;
-        else if (Gdx.input.isKeyPressed(Input.Keys.DOWN)) currentAnimation = walkDown;
+        if (Gdx.input.isKeyPressed(Input.Keys.A)) currentAnimation = walkLeft;
+        else if (Gdx.input.isKeyPressed(Input.Keys.D)) currentAnimation = walkRight;
+        else if (Gdx.input.isKeyPressed(Input.Keys.W)) currentAnimation = walkUp;
+        else if (Gdx.input.isKeyPressed(Input.Keys.S)) currentAnimation = walkDown;
 
         if (isMoving()) {
             animationTime += Gdx.graphics.getDeltaTime();
@@ -211,16 +237,16 @@ public class MainGame extends ApplicationAdapter {
         float newY = playerY;
         float delta = Gdx.graphics.getDeltaTime();
 
-        if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) {
+        if (Gdx.input.isKeyPressed(Input.Keys.A)) {
             newX -= playerSpeed * delta;
         }
-        if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) {
+        if (Gdx.input.isKeyPressed(Input.Keys.D)) {
             newX += playerSpeed * delta;
         }
-        if (Gdx.input.isKeyPressed(Input.Keys.UP)) {
+        if (Gdx.input.isKeyPressed(Input.Keys.W)) {
             newY += playerSpeed * delta;
         }
-        if (Gdx.input.isKeyPressed(Input.Keys.DOWN)) {
+        if (Gdx.input.isKeyPressed(Input.Keys.S)) {
             newY -= playerSpeed * delta;
         }
 
@@ -271,10 +297,10 @@ public class MainGame extends ApplicationAdapter {
     }
 
     private boolean isMoving() {
-        return Gdx.input.isKeyPressed(Input.Keys.LEFT) ||
-            Gdx.input.isKeyPressed(Input.Keys.RIGHT) ||
-            Gdx.input.isKeyPressed(Input.Keys.UP) ||
-            Gdx.input.isKeyPressed(Input.Keys.DOWN);
+        return Gdx.input.isKeyPressed(Input.Keys.A) ||
+            Gdx.input.isKeyPressed(Input.Keys.D) ||
+            Gdx.input.isKeyPressed(Input.Keys.W) ||
+            Gdx.input.isKeyPressed(Input.Keys.S);
     }
 
     @Override
@@ -288,7 +314,7 @@ public class MainGame extends ApplicationAdapter {
     private class Enemy {
         private float x, y;
         private float speed = 100f;
-        private TextureRegion[] walkLeft, walkRight, walkUp, walkDown;
+        private TextureRegion[] walkD, walkA, walkW, walkS;
         private float animationTime;
         private int currentFrame;
         private TextureRegion[] currentAnimation;
@@ -300,20 +326,20 @@ public class MainGame extends ApplicationAdapter {
             this.lastX = x;
             this.lastY = y;
 
-            walkRight = new TextureRegion[4];
-            walkLeft = new TextureRegion[4];
-            walkUp = new TextureRegion[4];
-            walkDown = new TextureRegion[4];
+            walkD = new TextureRegion[4];
+            walkA = new TextureRegion[4];
+            walkW = new TextureRegion[4];
+            walkS = new TextureRegion[4];
 
             for (int i = 0; i < 4; i++) {
-                walkRight[i] = new TextureRegion(sheet, i * 64, 0, 64, 64);
-                walkLeft[i] = new TextureRegion(sheet, i * 64, 64, 64, 64);
-                walkUp[i] = new TextureRegion(sheet, i * 64, 128, 64, 64);
-                walkDown[i] = new TextureRegion(sheet, i * 64, 192, 64, 64);
+                walkD[i] = new TextureRegion(sheet, i * 64, 0, 64, 64);
+                walkA[i] = new TextureRegion(sheet, i * 64, 64, 64, 64);
+                walkW[i] = new TextureRegion(sheet, i * 64, 128, 64, 64);
+                walkS[i] = new TextureRegion(sheet, i * 64, 192, 64, 64);
             }
 
             animationTime = 0f;
-            currentAnimation = walkDown;
+            currentAnimation = walkS;
         }
 
         public void update(float playerX, float playerY, int[][] levelMap) {
@@ -328,17 +354,17 @@ public class MainGame extends ApplicationAdapter {
             // Движение к игроку
             if (playerX > x) {
                 newX += speed * delta;
-                currentAnimation = walkRight;
+                currentAnimation = walkD;
             } else if (playerX < x) {
                 newX -= speed * delta;
-                currentAnimation = walkLeft;
+                currentAnimation = walkA;
             }
             if (playerY > y) {
                 newY += speed * delta;
-                currentAnimation = walkUp;
+                currentAnimation = walkW;
             } else if (playerY < y) {
                 newY -= speed * delta;
-                currentAnimation = walkDown;
+                currentAnimation = walkS;
             }
 
             // Проверка коллизий
@@ -365,6 +391,10 @@ public class MainGame extends ApplicationAdapter {
             }
 
             return levelMap[mapX][mapY] == 1;
+        }
+
+        private boolean isMoving() {
+            return x != lastX || y != lastY;
         }
 
         public void render(SpriteBatch batch) {
