@@ -5,10 +5,10 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 
 public class Level {
     public static final int TILE_SIZE = 64;
-    private int[][] levelMap;
-    private Texture wallSheet;
-    private TextureRegion[] wallRegion;
-    private TextureRegion floorRegion;
+    private final int[][] levelMap;
+    private final Texture wallSheet;
+    private final TextureRegion[] wallRegion;
+    private final TextureRegion floorRegion;
 
     public Level() {
         levelMap = new int[20][15];

@@ -9,8 +9,8 @@ import com.badlogic.gdx.math.MathUtils;
 public class Enemy {
     private float x, y;
     private float speed = 100f;
-    private Texture enemySheet;
-    private TextureRegion[] walkLeft, walkRight, walkUp, walkDown;
+    private final Texture enemySheet;
+    private final TextureRegion[] walkLeft, walkRight, walkUp, walkDown;
     private float animationTime;
     private int currentFrame;
     private TextureRegion[] currentAnimation;

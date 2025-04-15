@@ -5,6 +5,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 
+
 public class MainGame extends ApplicationAdapter {
     private GameManager gameManager;
     private OrthographicCamera camera;
@@ -18,6 +19,7 @@ public class MainGame extends ApplicationAdapter {
         gameManager = new GameManager(camera);
         gameManager.initialize();
     }
+
 
     @Override
     public void render() {

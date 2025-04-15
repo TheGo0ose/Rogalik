@@ -12,7 +12,7 @@ public class Player {
     private TextureRegion[] walkLeft, walkRight, walkUp, walkDown;
     private float animationTime;
     private int currentFrame;
-    private int[][] levelMap;
+    private final int[][] levelMap;
 
     public Player(int[][] levelMap) {
         this.levelMap = levelMap;
@@ -79,7 +79,7 @@ public class Player {
 
     private void updateAnimation() {
         TextureRegion[] currentAnimation = walkDown;
-        if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) currentAnimation = walkLeft;
+        if (Gdx.input.isKeyPressed(Input.Keys.A)) currentAnimation = walkLeft;
         else if (Gdx.input.isKeyPressed(Input.Keys.D)) currentAnimation = walkRight;
         else if (Gdx.input.isKeyPressed(Input.Keys.W)) currentAnimation = walkUp;
         else if (Gdx.input.isKeyPressed(Input.Keys.S)) currentAnimation = walkDown;
