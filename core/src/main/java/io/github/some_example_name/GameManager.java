@@ -2,6 +2,8 @@ package io.github.some_example_name;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
+import com.badlogic.gdx.audio.Music;
+import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
@@ -11,6 +13,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.ImageButton;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
@@ -23,7 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class GameManager {
-    private final SpriteBatch batch;
+    private SpriteBatch batch;
     private Player player;
     private Level level;
     private final List<Enemy> enemies;
@@ -34,6 +37,14 @@ public class GameManager {
     private Stage menuStage;
     private Texture menuTexture;
     private Texture soundTexture;
+    private Texture buttsTexture;
+    private Texture menuBackgroundTexture;
+
+    // Переменные для аудио
+    private Music menuMusic;
+    private Music gameMusic;
+    private Sound buttonClickSound;
+    private GameState currentMusicState; // Отслеживание текущего состояния музыки
 
     // Переменные для инвентаря и статистики
     private Stage inventoryStage;
@@ -59,8 +70,16 @@ public class GameManager {
     }
 
     public void initialize() {
+        Gdx.app.log("GameManager", "Starting initialize");
         level = new Level();
         level.generateLevel();
+        try {
+            menuTexture = new Texture(Gdx.files.internal("menu_butt.png"));
+            Gdx.app.log("GameManager", "menuTexture loaded");
+        } catch (Exception e) {
+            Gdx.app.error("GameManager", "Failed to load menu_butt.png", e);
+            throw e;
+        }
 
         player = new Player(level.getLevelMap());
         player.setStartPosition();
@@ -69,64 +88,131 @@ public class GameManager {
 
         renderer = new Renderer(batch, level, player, enemies);
 
+        // Инициализация аудио
+        try {
+            menuMusic = Gdx.audio.newMusic(Gdx.files.internal("menu_music.mp3"));
+            Gdx.app.log("GameManager", "menuMusic loaded");
+        } catch (Exception e) {
+            Gdx.app.error("GameManager", "Failed to load menu_music.mp3", e);
+            throw e;
+        }
+        try {
+            gameMusic = Gdx.audio.newMusic(Gdx.files.internal("game_music.mp3"));
+            Gdx.app.log("GameManager", "gameMusic loaded");
+        } catch (Exception e) {
+            Gdx.app.error("GameManager", "Failed to load game_music.mp3", e);
+            throw e;
+        }
+        try {
+            buttonClickSound = Gdx.audio.newSound(Gdx.files.internal("button_click.mp3"));
+            Gdx.app.log("GameManager", "buttonClickSound loaded");
+        } catch (Exception e) {
+            Gdx.app.error("GameManager", "Failed to load button_click.mp3", e);
+            throw e;
+        }
+        menuMusic.setLooping(true);
+        gameMusic.setLooping(true);
+
         // Инициализация главного меню
         gameState = GameState.MENU;
+        currentMusicState = null; // Инициализируем как null, чтобы запустить музыку
         menuStage = new Stage(new ScreenViewport());
         Gdx.input.setInputProcessor(menuStage);
+
+        // Добавляем фоновое изображение
+        menuBackgroundTexture = new Texture(Gdx.files.internal("menu_butt.png"));
+        Image backgroundImage = new Image(menuBackgroundTexture);
+        backgroundImage.setSize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        backgroundImage.setPosition(200, 70);
+        backgroundImage.setSize(240, 347); // Пример
+        menuStage.addActor(backgroundImage);
 
         Table menuTable = new Table();
         menuTable.setFillParent(true);
         menuStage.addActor(menuTable);
 
-        menuTexture = new Texture("menu_butt.png");
-        TextureRegion startRegion = new TextureRegion(menuTexture, 0, 51, 200, 50);
-        TextureRegion optionsRegion = new TextureRegion(menuTexture, 0, 131, 200, 50);
-        TextureRegion exitRegion = new TextureRegion(menuTexture, 0, 211, 200, 50);
+        try {
+            buttsTexture = new Texture("butts.png");
+            Gdx.app.log("GameManager", "buttsTexture loaded");
+        } catch (Exception e) {
+            Gdx.app.error("GameManager", "Failed to load butts.png", e);
+            throw e;
+        }
+        TextureRegion startRegion = new TextureRegion(buttsTexture, 0, 0, 149, 70);
+        TextureRegion startDownRegion = new TextureRegion(buttsTexture, 172, 0, 149, 70);
+        TextureRegion optionsRegion = new TextureRegion(buttsTexture, 0, 78, 149, 70);
+        TextureRegion optionsDownRegion = new TextureRegion(buttsTexture, 172, 79, 149, 70);
+        TextureRegion exitRegion = new TextureRegion(buttsTexture, 0, 159, 149, 70);
+        TextureRegion exitDownRegion = new TextureRegion(buttsTexture, 172, 158, 149, 70);
 
         NinePatch startPatch = new NinePatch(startRegion, 10, 10, 10, 10);
         NinePatch optionsPatch = new NinePatch(optionsRegion, 10, 10, 10, 10);
         NinePatch exitPatch = new NinePatch(exitRegion, 10, 10, 10, 10);
+        NinePatch startDownPatch = new NinePatch(startDownRegion, 10, 10, 10, 10);
+        NinePatch optionsDownPatch = new NinePatch(optionsDownRegion, 10, 10, 10, 10);
+        NinePatch exitDownPatch = new NinePatch(exitDownRegion, 10, 10, 10, 10);
 
         ImageButton.ImageButtonStyle startStyle = new ImageButton.ImageButtonStyle();
         startStyle.up = new NinePatchDrawable(startPatch);
+        startStyle.down = new NinePatchDrawable(startDownPatch);
 
         ImageButton.ImageButtonStyle optionsStyle = new ImageButton.ImageButtonStyle();
         optionsStyle.up = new NinePatchDrawable(optionsPatch);
+        optionsStyle.down = new NinePatchDrawable(optionsDownPatch);
 
         ImageButton.ImageButtonStyle exitStyle = new ImageButton.ImageButtonStyle();
         exitStyle.up = new NinePatchDrawable(exitPatch);
+        exitStyle.down = new NinePatchDrawable(exitDownPatch);
 
         ImageButton startButton = new ImageButton(startStyle);
         ImageButton optionsButton = new ImageButton(optionsStyle);
         ImageButton exitButton = new ImageButton(exitStyle);
 
-        menuTable.add(startButton).width(200).height(50).pad(10);
+        menuTable.add(startButton).width(149).height(70).pad(10);
         menuTable.row();
-        menuTable.add(optionsButton).width(200).height(50).pad(10);
+        menuTable.add(optionsButton).width(149).height(70).pad(10);
         menuTable.row();
-        menuTable.add(exitButton).width(200).height(50).pad(10);
+        menuTable.add(exitButton).width(149).height(70).pad(10);
 
         startButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                gameState = GameState.PLAYING;
-                Gdx.input.setInputProcessor(null);
+                try {
+                    if (soundEnabled) buttonClickSound.play(volume);
+                    gameState = GameState.PLAYING;
+                    Gdx.input.setInputProcessor(null);
+                    Gdx.app.log("GameManager", "Start button clicked, gameState: " + gameState);
+                } catch (Exception e) {
+                    Gdx.app.error("GameManager", "Error in startButton click", e);
+                }
             }
         });
 
         optionsButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                gameState = GameState.SETTINGS;
-                settingsVisible = true;
-                Gdx.input.setInputProcessor(settingsStage);
+                try {
+                    if (soundEnabled) buttonClickSound.play(volume);
+                    gameState = GameState.SETTINGS;
+                    settingsVisible = true;
+                    Gdx.input.setInputProcessor(settingsStage);
+                    Gdx.app.log("GameManager", "Options button clicked, gameState: " + gameState);
+                } catch (Exception e) {
+                    Gdx.app.error("GameManager", "Error in optionsButton click", e);
+                }
             }
         });
 
         exitButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                Gdx.app.exit();
+                try {
+                    if (soundEnabled) buttonClickSound.play(volume);
+                    Gdx.app.log("GameManager", "Exit button clicked");
+                    Gdx.app.exit();
+                } catch (Exception e) {
+                    Gdx.app.error("GameManager", "Error in exitButton click", e);
+                }
             }
         });
 
@@ -149,26 +235,41 @@ public class GameManager {
         buttonStyle.fontColor = Color.WHITE;
 
         // Текстуры для элементов управления звуком
-        soundTexture = new Texture(Gdx.files.internal("soundbuttons.png"));
+        try {
+            soundTexture = new Texture(Gdx.files.internal("soundbuttons.png"));
+            Gdx.app.log("GameManager", "soundTexture loaded");
+        } catch (Exception e) {
+            Gdx.app.error("GameManager", "Failed to load soundbuttons.png", e);
+            throw e;
+        }
         TextureRegion soundOnRegion = new TextureRegion(soundTexture, 0, 0, 23, 20);
         TextureRegion soundOffRegion = new TextureRegion(soundTexture, 23, 0, 23, 20);
+        TextureRegion soundDownRegion = new TextureRegion(soundTexture, 46, 0, 23, 20);
         TextureRegion arrowLeftRegion = new TextureRegion(soundTexture, 0, 26, 19, 19);
         TextureRegion arrowRightRegion = new TextureRegion(soundTexture, 76, 26, 19, 19);
+        TextureRegion arrowLeftDownRegion = new TextureRegion(soundTexture, 19, 26, 19, 19);
+        TextureRegion arrowRightDownRegion = new TextureRegion(soundTexture, 95, 26, 19, 19);
         TextureRegion progressBarRegion = new TextureRegion(soundTexture, 24, 26, 47, 15);
 
         NinePatch soundPatch = new NinePatch(soundEnabled ? soundOnRegion : soundOffRegion, 5, 5, 5, 5);
+        NinePatch soundDownPatch = new NinePatch(soundDownRegion, 5, 5, 5, 5);
         NinePatch arrowLeftPatch = new NinePatch(arrowLeftRegion, 5, 5, 5, 5);
         NinePatch arrowRightPatch = new NinePatch(arrowRightRegion, 5, 5, 5, 5);
+        NinePatch arrowLeftDownPatch = new NinePatch(arrowLeftDownRegion, 5, 5, 5, 5);
+        NinePatch arrowRightDownPatch = new NinePatch(arrowRightDownRegion, 5, 5, 5, 5);
         NinePatch progressBarPatch = new NinePatch(progressBarRegion, 5, 5, 5, 5);
 
         ImageButton.ImageButtonStyle soundButtonStyle = new ImageButton.ImageButtonStyle();
         soundButtonStyle.up = new NinePatchDrawable(soundPatch);
+        soundButtonStyle.down = new NinePatchDrawable(soundDownPatch);
 
         ImageButton.ImageButtonStyle arrowLeftStyle = new ImageButton.ImageButtonStyle();
         arrowLeftStyle.up = new NinePatchDrawable(arrowLeftPatch);
+        arrowLeftStyle.down = new NinePatchDrawable(arrowLeftDownPatch);
 
         ImageButton.ImageButtonStyle arrowRightStyle = new ImageButton.ImageButtonStyle();
         arrowRightStyle.up = new NinePatchDrawable(arrowRightPatch);
+        arrowRightStyle.down = new NinePatchDrawable(arrowRightDownPatch);
 
         // Сохраняем стиль прогресс-бара
         progressBarStyle = new ImageButton.ImageButtonStyle();
@@ -179,10 +280,17 @@ public class GameManager {
         soundButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                soundEnabled = !soundEnabled;
-                soundButtonStyle.up = new NinePatchDrawable(new NinePatch(soundEnabled ? soundOnRegion : soundOffRegion, 5, 5, 5, 5));
-                soundButton.setStyle(soundButtonStyle);
-                updateVolume();
+                try {
+                    if (soundEnabled) buttonClickSound.play(volume);
+                    soundEnabled = !soundEnabled;
+                    soundButtonStyle.up = new NinePatchDrawable(new NinePatch(soundEnabled ? soundOnRegion : soundOffRegion, 5, 5, 5, 5));
+                    soundButtonStyle.down = new NinePatchDrawable(soundDownPatch);
+                    soundButton.setStyle(soundButtonStyle);
+                    updateVolume();
+                    Gdx.app.log("GameManager", "Sound button clicked, soundEnabled: " + soundEnabled);
+                } catch (Exception e) {
+                    Gdx.app.error("GameManager", "Error in soundButton click", e);
+                }
             }
         });
 
@@ -191,22 +299,34 @@ public class GameManager {
         decreaseVolumeButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                volume = Math.max(0.0f, volume - 0.1f);
-                updateVolume();
+                try {
+                    if (soundEnabled) buttonClickSound.play(volume);
+                    volume = Math.max(0.0f, volume - 0.1f);
+                    updateVolume();
+                    Gdx.app.log("GameManager", "Decrease volume button clicked, volume: " + volume);
+                } catch (Exception e) {
+                    Gdx.app.error("GameManager", "Error in decreaseVolumeButton click", e);
+                }
             }
         });
 
         // Прогресс-бар громкости (сохраняем как поле)
         progressBar = new ImageButton(progressBarStyle);
-        progressBar.setSize(300 * volume, 45); // Начальный размер (увеличен)
+        progressBar.setSize(300 * volume, 45);
 
         // Кнопка увеличения громкости
         ImageButton increaseVolumeButton = new ImageButton(arrowRightStyle);
         increaseVolumeButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                volume = Math.min(1.0f, volume + 0.1f);
-                updateVolume();
+                try {
+                    if (soundEnabled) buttonClickSound.play(volume);
+                    volume = Math.min(1.0f, volume + 0.1f);
+                    updateVolume();
+                    Gdx.app.log("GameManager", "Increase volume button clicked, volume: " + volume);
+                } catch (Exception e) {
+                    Gdx.app.error("GameManager", "Error in increaseVolumeButton click", e);
+                }
             }
         });
 
@@ -225,9 +345,15 @@ public class GameManager {
         backButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                settingsVisible = false;
-                gameState = GameState.MENU;
-                Gdx.input.setInputProcessor(menuStage);
+                try {
+                    if (soundEnabled) buttonClickSound.play(volume);
+                    settingsVisible = false;
+                    gameState = GameState.MENU;
+                    Gdx.input.setInputProcessor(menuStage);
+                    Gdx.app.log("GameManager", "Back button clicked, gameState: " + gameState);
+                } catch (Exception e) {
+                    Gdx.app.error("GameManager", "Error in backButton click", e);
+                }
             }
         });
         settingsTable.add(backButton).colspan(5).pad(10);
@@ -251,7 +377,13 @@ public class GameManager {
             useButton.addListener(new ClickListener() {
                 @Override
                 public void clicked(InputEvent event, float x, float y) {
-                    useItem(item);
+                    try {
+                        if (soundEnabled) buttonClickSound.play(volume);
+                        useItem(item);
+                        Gdx.app.log("GameManager", "Use button clicked for item: " + item.getName());
+                    } catch (Exception e) {
+                        Gdx.app.error("GameManager", "Error in useButton click", e);
+                    }
                 }
             });
             inventoryTable.add(useButton).pad(5);
@@ -263,19 +395,68 @@ public class GameManager {
         closeButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                inventoryVisible = false;
-                Gdx.input.setInputProcessor(null);
+                try {
+                    if (soundEnabled) buttonClickSound.play(volume);
+                    inventoryVisible = false;
+                    Gdx.input.setInputProcessor(null);
+                    Gdx.app.log("GameManager", "Close button clicked");
+                } catch (Exception e) {
+                    Gdx.app.error("GameManager", "Error in closeButton click", e);
+                }
             }
         });
         inventoryTable.add(closeButton).colspan(2).pad(10);
+
+        // Начать воспроизведение музыки для начального состояния
+        Gdx.app.log("GameManager", "Initial soundEnabled: " + soundEnabled + ", volume: " + volume);
+        updateMusic();
+        Gdx.app.log("GameManager", "Initialize completed");
     }
 
     private void updateVolume() {
-        // Обновляем только размер прогресс-бара
-        progressBar.setSize(300 * volume, 45); // Масштабируем только ширину
+        progressBar.setSize(300 * volume, 45);
+        if (soundEnabled) {
+            menuMusic.setVolume(volume);
+            gameMusic.setVolume(volume);
+            Gdx.app.log("GameManager", "Volume updated to: " + volume);
+        } else {
+            menuMusic.setVolume(0);
+            gameMusic.setVolume(0);
+            Gdx.app.log("GameManager", "Sound disabled, volume set to 0");
+        }
+        updateMusic(); // Обновляем музыку при изменении громкости
+    }
 
-        // Здесь можно добавить код для изменения громкости звуков
-        // Например: sound.setVolume(soundId, soundEnabled ? volume : 0);
+    private void updateMusic() {
+        Gdx.app.log("GameManager", "Updating music, gameState: " + gameState + ", soundEnabled: " + soundEnabled);
+
+        // Проверяем, нужно ли менять музыку
+        if (currentMusicState == gameState && menuMusic.isPlaying() || gameMusic.isPlaying()) {
+            return; // Музыка уже играет для текущего состояния
+        }
+
+        // Останавливаем текущую музыку
+        menuMusic.stop();
+        gameMusic.stop();
+
+        // Воспроизводим новую музыку
+        if (soundEnabled) {
+            if (gameState == GameState.MENU || gameState == GameState.SETTINGS) {
+                if (!menuMusic.isPlaying()) {
+                    Gdx.app.log("GameManager", "Playing menuMusic, volume: " + volume);
+                    menuMusic.setVolume(volume);
+                    menuMusic.play();
+                }
+            } else if (gameState == GameState.PLAYING) {
+                if (!gameMusic.isPlaying()) {
+                    Gdx.app.log("GameManager", "Playing gameMusic, volume: " + volume);
+                    gameMusic.setVolume(volume);
+                    gameMusic.play();
+                }
+            }
+        }
+
+        currentMusicState = gameState; // Обновляем текущее состояние музыки
     }
 
     private void useItem(Item item) {
@@ -313,7 +494,13 @@ public class GameManager {
             useButton.addListener(new ClickListener() {
                 @Override
                 public void clicked(InputEvent event, float x, float y) {
-                    useItem(item);
+                    try {
+                        if (soundEnabled) buttonClickSound.play(volume);
+                        useItem(item);
+                        Gdx.app.log("GameManager", "Use button clicked for item: " + item.getName());
+                    } catch (Exception e) {
+                        Gdx.app.error("GameManager", "Error in useButton click", e);
+                    }
                 }
             });
             inventoryTable.add(useButton).pad(5);
@@ -324,8 +511,14 @@ public class GameManager {
         closeButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                inventoryVisible = false;
-                Gdx.input.setInputProcessor(null);
+                try {
+                    if (soundEnabled) buttonClickSound.play(volume);
+                    inventoryVisible = false;
+                    Gdx.input.setInputProcessor(null);
+                    Gdx.app.log("GameManager", "Close button clicked");
+                } catch (Exception e) {
+                    Gdx.app.error("GameManager", "Error in closeButton click", e);
+                }
             }
         });
         inventoryTable.add(closeButton).colspan(2).pad(10);
@@ -339,7 +532,6 @@ public class GameManager {
 
     public void update() {
         if (gameState == GameState.PLAYING) {
-            // Проверка нажатия клавиши для открытия/закрытия инвентаря
             if (Gdx.input.isKeyJustPressed(Input.Keys.I)) {
                 inventoryVisible = !inventoryVisible;
                 if (inventoryVisible) {
@@ -364,6 +556,11 @@ public class GameManager {
             menuStage.act(Gdx.graphics.getDeltaTime());
         } else if (gameState == GameState.SETTINGS) {
             settingsStage.act(Gdx.graphics.getDeltaTime());
+        }
+
+        // Вызываем updateMusic только при необходимости
+        if (currentMusicState != gameState) {
+            updateMusic();
         }
     }
 
@@ -392,5 +589,10 @@ public class GameManager {
         settingsStage.dispose();
         menuTexture.dispose();
         soundTexture.dispose();
+        buttsTexture.dispose();
+        menuBackgroundTexture.dispose();
+        if (menuMusic != null) menuMusic.dispose();
+        if (gameMusic != null) gameMusic.dispose();
+        if (buttonClickSound != null) buttonClickSound.dispose();
     }
 }
