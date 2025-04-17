@@ -12,7 +12,13 @@ public class Player {
     private TextureRegion[] walkLeft, walkRight, walkUp, walkDown;
     private float animationTime;
     private int currentFrame;
-    private final int[][] levelMap;
+    private int[][] levelMap;
+
+    // Статистика персонажа
+    private int health = 100;
+    private int maxHealth = 100;
+    private int damage = 10;
+    private Inventory inventory;
 
     public Player(int[][] levelMap) {
         this.levelMap = levelMap;
@@ -30,25 +36,44 @@ public class Player {
             walkUp[i] = new TextureRegion(playerSheet, i * 64, 64, 64, 64);
             walkDown[i] = new TextureRegion(playerSheet, i * 64, 0, 64, 64);
         }
+
+        inventory = new Inventory();
+        inventory.addItem(new Item("Sword", "A sharp blade"));
+        inventory.addItem(new Item("Potion", "Heals 20 HP"));
     }
 
     public void setStartPosition() {
-        int startX = 3;
-        int startY = 3;
-        x = startX * Level.TILE_SIZE;
-        y = startY * Level.TILE_SIZE;
+        int startX = 10;
+        int startY = 7;
 
-        if (levelMap[startX][startY] != 0) {
+        // Проверяем, что начальная позиция свободна и имеет открытые пути
+        if (levelMap[startX][startY] == 0 && isValidStartPosition(startX, startY)) {
+            x = startX * Level.TILE_SIZE;
+            y = startY * Level.TILE_SIZE;
+        } else {
+            // Ищем другую свободную позицию
             for (int i = 1; i < 19; i++) {
                 for (int j = 1; j < 14; j++) {
-                    if (levelMap[i][j] == 0) {
+                    if (levelMap[i][j] == 0 && isValidStartPosition(i, j)) {
                         x = i * Level.TILE_SIZE;
                         y = j * Level.TILE_SIZE;
                         return;
                     }
                 }
             }
+            // Если не нашли подходящую позицию, выводим сообщение
+            Gdx.app.log("Player", "Не удалось найти подходящую стартовую позицию!");
         }
+    }
+
+    // Метод для проверки, что позиция не изолирована
+    private boolean isValidStartPosition(int x, int y) {
+        int openPaths = 0;
+        if (x > 0 && levelMap[x - 1][y] == 0) openPaths++;  // Лево
+        if (x < 19 && levelMap[x + 1][y] == 0) openPaths++; // Право
+        if (y > 0 && levelMap[x][y - 1] == 0) openPaths++;  // Низ
+        if (y < 14 && levelMap[x][y + 1] == 0) openPaths++; // Верх
+        return openPaths >= 2; // Требуем минимум 2 открытых пути
     }
 
     public void handleInput() {
@@ -112,6 +137,16 @@ public class Player {
             Gdx.input.isKeyPressed(Input.Keys.W) ||
             Gdx.input.isKeyPressed(Input.Keys.S);
     }
+
+    public int getHealth() { return health; }
+    public int getMaxHealth() { return maxHealth; }
+    public int getDamage() { return damage; }
+    public float getSpeed() { return speed; }
+    public Inventory getInventory() { return inventory; }
+
+    public void setHealth(int health) { this.health = Math.max(0, Math.min(health, maxHealth)); }
+    public void setDamage(int damage) { this.damage = damage; }
+    public void setSpeed(float speed) { this.speed = speed; }
 
     public float getX() { return x; }
     public float getY() { return y; }
