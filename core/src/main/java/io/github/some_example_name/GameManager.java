@@ -33,13 +33,23 @@ public class GameManager {
     // Переменные для меню
     private Stage menuStage;
     private Texture menuTexture;
+    private Texture soundTexture;
 
     // Переменные для инвентаря и статистики
     private Stage inventoryStage;
     private Table inventoryTable;
     private boolean inventoryVisible = false;
 
-    private enum GameState { MENU, PLAYING }
+    // Переменные для настроек
+    private Stage settingsStage;
+    private Table settingsTable;
+    private boolean settingsVisible = false;
+    private float volume = 1.0f;
+    private boolean soundEnabled = true;
+    private ImageButton progressBar;
+    private ImageButton.ImageButtonStyle progressBarStyle;
+
+    private enum GameState { MENU, PLAYING, SETTINGS }
     private GameState gameState;
 
     public GameManager(OrthographicCamera camera) {
@@ -59,7 +69,7 @@ public class GameManager {
 
         renderer = new Renderer(batch, level, player, enemies);
 
-        // Инициализация меню
+        // Инициализация главного меню
         gameState = GameState.MENU;
         menuStage = new Stage(new ScreenViewport());
         Gdx.input.setInputProcessor(menuStage);
@@ -107,7 +117,9 @@ public class GameManager {
         optionsButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                Gdx.app.log("Menu", "Options clicked (placeholder)");
+                gameState = GameState.SETTINGS;
+                settingsVisible = true;
+                Gdx.input.setInputProcessor(settingsStage);
             }
         });
 
@@ -124,13 +136,103 @@ public class GameManager {
         inventoryTable.setFillParent(true);
         inventoryStage.addActor(inventoryTable);
 
+        // Инициализация интерфейса настроек
+        settingsStage = new Stage(new ScreenViewport());
+        settingsTable = new Table();
+        settingsTable.setFillParent(true);
+        settingsStage.addActor(settingsTable);
+
         // Стили для интерфейса
         Label.LabelStyle labelStyle = new Label.LabelStyle(new BitmapFont(), Color.WHITE);
         TextButton.TextButtonStyle buttonStyle = new TextButton.TextButtonStyle();
         buttonStyle.font = new BitmapFont();
         buttonStyle.fontColor = Color.WHITE;
 
-        // Добавляем статы персонажа
+        // Текстуры для элементов управления звуком
+        soundTexture = new Texture(Gdx.files.internal("soundbuttons.png"));
+        TextureRegion soundOnRegion = new TextureRegion(soundTexture, 0, 0, 23, 20);
+        TextureRegion soundOffRegion = new TextureRegion(soundTexture, 23, 0, 23, 20);
+        TextureRegion arrowLeftRegion = new TextureRegion(soundTexture, 0, 26, 19, 19);
+        TextureRegion arrowRightRegion = new TextureRegion(soundTexture, 76, 26, 19, 19);
+        TextureRegion progressBarRegion = new TextureRegion(soundTexture, 24, 26, 47, 15);
+
+        NinePatch soundPatch = new NinePatch(soundEnabled ? soundOnRegion : soundOffRegion, 5, 5, 5, 5);
+        NinePatch arrowLeftPatch = new NinePatch(arrowLeftRegion, 5, 5, 5, 5);
+        NinePatch arrowRightPatch = new NinePatch(arrowRightRegion, 5, 5, 5, 5);
+        NinePatch progressBarPatch = new NinePatch(progressBarRegion, 5, 5, 5, 5);
+
+        ImageButton.ImageButtonStyle soundButtonStyle = new ImageButton.ImageButtonStyle();
+        soundButtonStyle.up = new NinePatchDrawable(soundPatch);
+
+        ImageButton.ImageButtonStyle arrowLeftStyle = new ImageButton.ImageButtonStyle();
+        arrowLeftStyle.up = new NinePatchDrawable(arrowLeftPatch);
+
+        ImageButton.ImageButtonStyle arrowRightStyle = new ImageButton.ImageButtonStyle();
+        arrowRightStyle.up = new NinePatchDrawable(arrowRightPatch);
+
+        // Сохраняем стиль прогресс-бара
+        progressBarStyle = new ImageButton.ImageButtonStyle();
+        progressBarStyle.up = new NinePatchDrawable(progressBarPatch);
+
+        // Кнопка включения/выключения звука
+        ImageButton soundButton = new ImageButton(soundButtonStyle);
+        soundButton.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                soundEnabled = !soundEnabled;
+                soundButtonStyle.up = new NinePatchDrawable(new NinePatch(soundEnabled ? soundOnRegion : soundOffRegion, 5, 5, 5, 5));
+                soundButton.setStyle(soundButtonStyle);
+                updateVolume();
+            }
+        });
+
+        // Кнопка уменьшения громкости
+        ImageButton decreaseVolumeButton = new ImageButton(arrowLeftStyle);
+        decreaseVolumeButton.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                volume = Math.max(0.0f, volume - 0.1f);
+                updateVolume();
+            }
+        });
+
+        // Прогресс-бар громкости (сохраняем как поле)
+        progressBar = new ImageButton(progressBarStyle);
+        progressBar.setSize(300 * volume, 45); // Начальный размер (увеличен)
+
+        // Кнопка увеличения громкости
+        ImageButton increaseVolumeButton = new ImageButton(arrowRightStyle);
+        increaseVolumeButton.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                volume = Math.min(1.0f, volume + 0.1f);
+                updateVolume();
+            }
+        });
+
+        // Добавление элементов в таблицу настроек
+        settingsTable.add(new Label("Settings", labelStyle)).colspan(5).pad(10);
+        settingsTable.row();
+        settingsTable.add(new Label("Sound:", labelStyle)).pad(5);
+        settingsTable.add(soundButton).size(69, 60).pad(5);
+        settingsTable.add(decreaseVolumeButton).size(57, 57).pad(5);
+        settingsTable.add(progressBar).size(300 * volume, 45).pad(5);
+        settingsTable.add(increaseVolumeButton).size(57, 57).pad(5);
+        settingsTable.row();
+
+        // Кнопка возврата в главное меню
+        TextButton backButton = new TextButton("Back", buttonStyle);
+        backButton.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                settingsVisible = false;
+                gameState = GameState.MENU;
+                Gdx.input.setInputProcessor(menuStage);
+            }
+        });
+        settingsTable.add(backButton).colspan(5).pad(10);
+
+        // Добавляем статы персонажа в инвентарь
         inventoryTable.add(new Label("Character Stats", labelStyle)).colspan(2).pad(10);
         inventoryTable.row();
         inventoryTable.add(new Label("Health: " + player.getHealth() + "/" + player.getMaxHealth(), labelStyle)).pad(5);
@@ -166,6 +268,14 @@ public class GameManager {
             }
         });
         inventoryTable.add(closeButton).colspan(2).pad(10);
+    }
+
+    private void updateVolume() {
+        // Обновляем только размер прогресс-бара
+        progressBar.setSize(300 * volume, 45); // Масштабируем только ширину
+
+        // Здесь можно добавить код для изменения громкости звуков
+        // Например: sound.setVolume(soundId, soundEnabled ? volume : 0);
     }
 
     private void useItem(Item item) {
@@ -250,14 +360,18 @@ public class GameManager {
             } else {
                 inventoryStage.act(Gdx.graphics.getDeltaTime());
             }
-        } else {
+        } else if (gameState == GameState.MENU) {
             menuStage.act(Gdx.graphics.getDeltaTime());
+        } else if (gameState == GameState.SETTINGS) {
+            settingsStage.act(Gdx.graphics.getDeltaTime());
         }
     }
 
     public void render() {
         if (gameState == GameState.MENU) {
             menuStage.draw();
+        } else if (gameState == GameState.SETTINGS) {
+            settingsStage.draw();
         } else {
             renderer.render();
             if (inventoryVisible) {
@@ -275,6 +389,8 @@ public class GameManager {
         }
         menuStage.dispose();
         inventoryStage.dispose();
+        settingsStage.dispose();
         menuTexture.dispose();
+        soundTexture.dispose();
     }
 }
