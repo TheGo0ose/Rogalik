@@ -21,18 +21,23 @@ public class Renderer {
     public void render() {
         batch.begin();
 
+        int[][] levelMap = level.getLevelMap();
+        int mapWidth = levelMap.length;
+        int mapHeight = levelMap[0].length;
+
         // Отрисовка пола
-        for (int x = 0; x < 20; x++) {
-            for (int y = 0; y < 15; y++) {
-                if (level.getLevelMap()[x][y] == 0) {
-                    batch.draw(level.getFloorRegion(), x * Level.TILE_SIZE, y * Level.TILE_SIZE);
+        for (int x = 0; x < mapWidth; x++) {
+            for (int y = 0; y < mapHeight; y++) {
+                TextureRegion floorTexture = level.getFloorRegion(x, y);
+                if (floorTexture != null) {
+                    batch.draw(floorTexture, x * Level.TILE_SIZE, y * Level.TILE_SIZE);
                 }
             }
         }
 
         // Отрисовка стен
-        for (int x = 0; x < 20; x++) {
-            for (int y = 0; y < 15; y++) {
+        for (int x = 0; x < mapWidth; x++) {
+            for (int y = 0; y < mapHeight; y++) {
                 TextureRegion wallTexture = level.getWallRegion(x, y);
                 if (wallTexture != null) {
                     batch.draw(wallTexture, x * Level.TILE_SIZE, y * Level.TILE_SIZE);

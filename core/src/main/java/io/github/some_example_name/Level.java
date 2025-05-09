@@ -3,99 +3,108 @@ package io.github.some_example_name;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.utils.Array;
 
 public class Level {
     public static final int TILE_SIZE = 64;
     private int[][] levelMap;
     private Texture wallSheet;
+    private Texture floor;
     private TextureRegion[] wallRegion;
     private TextureRegion floorRegion;
 
+    private final Array<Room> rooms = new Array<>();
+
     public Level() {
-        levelMap = new int[20][15];
+        levelMap = new int[60][15]; // увеличено для длинной генерации
         wallSheet = new Texture("wall.png");
+        floor = new Texture("floor.png");
 
         wallRegion = new TextureRegion[10];
         for (int i = 0; i < 10; i++) {
-            wallRegion[i] = new TextureRegion(wallSheet, i * 64, 0, 64, 64);
+            wallRegion[i] = new TextureRegion(wallSheet, i * 0, 0, 64, 97);
         }
-        floorRegion = new TextureRegion(wallSheet, 0, 640, 64, 64);
+        floorRegion = new TextureRegion(floor, 0, 0, 64, 64);
     }
 
     public void generateLevel() {
-        // Заполняем всё стенами
-        for (int x = 0; x < 20; x++) {
-            for (int y = 0; y < 15; y++) {
-                levelMap[x][y] = 1; // 1 — стена
+        // Initialize map with void tiles (-1)
+        for (int x = 0; x < levelMap.length; x++) {
+            for (int y = 0; y < levelMap[0].length; y++) {
+                levelMap[x][y] = -1; // пустота
             }
         }
 
-        // Создаём границы уровня
-        for (int x = 0; x < 20; x++) {
-            levelMap[x][0] = 1;
-            levelMap[x][14] = 1;
-        }
-        for (int y = 0; y < 15; y++) {
-            levelMap[0][y] = 1;
-            levelMap[19][y] = 1;
-        }
-
-        // Генерация уровня с помощью Random Walk
-        randomWalkGeneration(10, 7, 300); // Начинаем с центра, 300 шагов
+        rooms.clear();
+        generateLinearRooms(5); // количество комнат
+        drawRooms();
+        connectRooms();
     }
 
-    private void randomWalkGeneration(int startX, int startY, int steps) {
-        int x = startX;
-        int y = startY;
+    private void generateLinearRooms(int count) {
+        int startX = 2;
+        int startY = 5;
 
-        // Устанавливаем начальную точку как пол
-        levelMap[x][y] = 0;
+        for (int i = 0; i < count; i++) {
+            RoomType type;
+            if (i == 0) type = RoomType.START;
+            else if (i == count - 1) type = RoomType.BOSS;
+            else type = MathUtils.randomBoolean() ? RoomType.ENEMY : RoomType.TREASURE;
 
-        // Выполняем случайное блуждание
-        for (int i = 0; i < steps; i++) {
-            // Выбираем случайное направление
-            int direction = MathUtils.random(3);
-            switch (direction) {
-                case 0: // Вверх
-                    if (y + 1 < 14) y++;
-                    break;
-                case 1: // Вниз
-                    if (y - 1 > 0) y--;
-                    break;
-                case 2: // Влево
-                    if (x - 1 > 0) x--;
-                    break;
-                case 3: // Вправо
-                    if (x + 1 < 19) x++;
-                    break;
-            }
+            int width = (type == RoomType.START) ? 3 : 6;
+            int height = (type == RoomType.START) ? 3 : 6;
 
-            // Устанавливаем текущую точку как пол
-            levelMap[x][y] = 0;
+            Room room = new Room(startX, startY, width, height, type);
+            rooms.add(room);
+
+            startX += width + 4; // расстояние между комнатами
         }
-
-        // Убедимся, что начальная точка открыта
-        ensureOpenStartArea(startX, startY);
     }
 
-    private void ensureOpenStartArea(int startX, int startY) {
-        // Создаём открытую зону 3x3 вокруг стартовой позиции
-        for (int x = startX - 1; x <= startX + 1; x++) {
-            for (int y = startY - 1; y <= startY + 1; y++) {
-                if (x > 0 && x < 19 && y > 0 && y < 14) {
-                    levelMap[x][y] = 0;
+    private void drawRooms() {
+        for (Room room : rooms) {
+            for (int x = room.x; x < room.x + room.width; x++) {
+                for (int y = room.y; y < room.y + room.height; y++) {
+                    if (x == room.x || x == room.x + room.width - 1 ||
+                        y == room.y || y == room.y + room.height - 1) {
+                        levelMap[x][y] = 1; // стена
+                    } else {
+                        levelMap[x][y] = 0; // пол
+                    }
                 }
             }
         }
     }
 
-    public TextureRegion getWallRegion(int x, int y) {
-        if (levelMap[x][y] != 1) return null;
+    private void connectRooms() {
+        for (int i = 1; i < rooms.size; i++) {
+            Room prev = rooms.get(i - 1);
+            Room curr = rooms.get(i);
 
-        boolean top = y < 14 && levelMap[x][y + 1] == 1;
+            int y = (prev.y + prev.height / 2);
+            int startX = prev.x + prev.width;
+            int endX = curr.x - 1;
+
+            for (int x = startX; x <= endX; x++) {
+                if (x >= 0 && x < levelMap.length && y >= 0 && y < levelMap[0].length) {
+                    levelMap[x][y] = 0; // коридор (пол)
+                }
+            }
+            // Optional: Add walls around corridor
+            if (endX >= 0 && endX < levelMap.length) {
+                if (y + 1 < levelMap[0].length) levelMap[endX][y + 1] = 1;
+                if (y - 1 >= 0) levelMap[endX][y - 1] = 1;
+            }
+        }
+    }
+
+    public TextureRegion getWallRegion(int x, int y) {
+        if (levelMap[x][y] != 1) return null; // Return null for non-wall tiles (floor or void)
+
+        boolean top = y < levelMap[0].length - 1 && levelMap[x][y + 1] == 1;
         boolean bottom = y > 0 && levelMap[x][y - 1] == 1;
         boolean left = x > 0 && levelMap[x - 1][y] == 1;
-        boolean right = x < 19 && levelMap[x + 1][y] == 1;
+        boolean right = x < levelMap.length - 1 && levelMap[x + 1][y] == 1;
 
         if (top && bottom && left && right) return wallRegion[0];
         else if (top && bottom && left) return wallRegion[1];
@@ -109,10 +118,21 @@ public class Level {
         else return wallRegion[9];
     }
 
-    public int[][] getLevelMap() { return levelMap; }
-    public TextureRegion getFloorRegion() { return floorRegion; }
+    public TextureRegion getFloorRegion(int x, int y) {
+        if (levelMap[x][y] == 0) return floorRegion; // Return floor texture for floor tiles
+        return null; // Return null for void or wall tiles
+    }
+
+    public int getTileType(int x, int y) {
+        return levelMap[x][y]; // Return tile type (-1 for void, 0 for floor, 1 for wall)
+    }
+
+    public int[][] getLevelMap() {
+        return levelMap;
+    }
 
     public void dispose() {
         wallSheet.dispose();
+        floor.dispose();
     }
 }

@@ -5,6 +5,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.scenes.scene2d.ui.Image;
 
 public class Enemy {
     private float x, y;
@@ -100,3 +101,4 @@ public class Enemy {
         enemySheet.dispose();
     }
 }
+
