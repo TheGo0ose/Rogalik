@@ -8,17 +8,24 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 public class Player {
     private float x, y;
     private float speed = 200f;
+    private float baseSpeed = 200f;
     private Texture playerSheet;
     private TextureRegion[] walkLeft, walkRight, walkUp, walkDown;
     private float animationTime;
     private int currentFrame;
     private int[][] levelMap;
 
-    // Статистика персонажа
     private int health = 100;
     private int maxHealth = 100;
-    private int damage = 10;
+    private int baseDamage = 10;
+    private int damage;
+    private int defense;
     private Inventory inventory;
+
+    private Item equippedWeapon;
+    private Item equippedArmor;
+    private float speedEffectTimer;
+    private float speedEffectMultiplier;
 
     public Player(int[][] levelMap) {
         this.levelMap = levelMap;
@@ -38,20 +45,25 @@ public class Player {
         }
 
         inventory = new Inventory();
-        inventory.addItem(new Item("Sword", "A sharp blade"));
-        inventory.addItem(new Item("Potion", "Heals 20 HP"));
+        // Добавляем базовый меч
+        Item rustySword = new Item("Ржавый меч", "Старый, но всё ещё острый", Item.ItemType.WEAPON, 5, 0, 0, "base_sword.png");
+        inventory.addItem(rustySword);
+        equipWeapon(rustySword); // Автоматически экипируем базовый меч
+
+        this.damage = baseDamage + (equippedWeapon != null ? equippedWeapon.getDamageBonus() : 0);
+        this.defense = 0;
+        this.speedEffectTimer = 0;
+        this.speedEffectMultiplier = 1;
     }
 
     public void setStartPosition() {
         int startX = 10;
         int startY = 7;
 
-        // Проверяем, что начальная позиция свободна и имеет открытые пути
         if (levelMap[startX][startY] == 0 && isValidStartPosition(startX, startY)) {
             x = startX * Level.TILE_SIZE;
             y = startY * Level.TILE_SIZE;
         } else {
-            // Ищем другую свободную позицию
             for (int i = 1; i < 19; i++) {
                 for (int j = 1; j < 14; j++) {
                     if (levelMap[i][j] == 0 && isValidStartPosition(i, j)) {
@@ -61,19 +73,17 @@ public class Player {
                     }
                 }
             }
-            // Если не нашли подходящую позицию, выводим сообщение
             Gdx.app.log("Player", "Не удалось найти подходящую стартовую позицию!");
         }
     }
 
-    // Метод для проверки, что позиция не изолирована
     private boolean isValidStartPosition(int x, int y) {
         int openPaths = 0;
-        if (x > 0 && levelMap[x - 1][y] == 0) openPaths++;  // Лево
-        if (x < 19 && levelMap[x + 1][y] == 0) openPaths++; // Право
-        if (y > 0 && levelMap[x][y - 1] == 0) openPaths++;  // Низ
-        if (y < 14 && levelMap[x][y + 1] == 0) openPaths++; // Верх
-        return openPaths >= 2; // Требуем минимум 2 открытых пути
+        if (x > 0 && levelMap[x - 1][y] == 0) openPaths++;
+        if (x < 19 && levelMap[x + 1][y] == 0) openPaths++;
+        if (y > 0 && levelMap[x][y - 1] == 0) openPaths++;
+        if (y < 14 && levelMap[x][y + 1] == 0) openPaths++;
+        return openPaths >= 2;
     }
 
     public void handleInput() {
@@ -81,18 +91,10 @@ public class Player {
         float newY = y;
         float delta = Gdx.graphics.getDeltaTime();
 
-        if (Gdx.input.isKeyPressed(Input.Keys.A)) {
-            newX -= speed * delta;
-        }
-        if (Gdx.input.isKeyPressed(Input.Keys.D)) {
-            newX += speed * delta;
-        }
-        if (Gdx.input.isKeyPressed(Input.Keys.W)) {
-            newY += speed * delta;
-        }
-        if (Gdx.input.isKeyPressed(Input.Keys.S)) {
-            newY -= speed * delta;
-        }
+        if (Gdx.input.isKeyPressed(Input.Keys.A)) newX -= speed * delta;
+        if (Gdx.input.isKeyPressed(Input.Keys.D)) newX += speed * delta;
+        if (Gdx.input.isKeyPressed(Input.Keys.W)) newY += speed * delta;
+        if (Gdx.input.isKeyPressed(Input.Keys.S)) newY -= speed * delta;
 
         if (!checkCollision(newX, newY)) {
             x = newX;
@@ -100,6 +102,7 @@ public class Player {
         }
 
         updateAnimation();
+        updateEffects(delta);
     }
 
     private void updateAnimation() {
@@ -138,11 +141,61 @@ public class Player {
             Gdx.input.isKeyPressed(Input.Keys.S);
     }
 
+    private void updateEffects(float delta) {
+        if (speedEffectTimer > 0) {
+            speedEffectTimer -= delta;
+            if (speedEffectTimer <= 0) {
+                speed = baseSpeed;
+                speedEffectMultiplier = 1;
+                Gdx.app.log("Player", "Speed effect ended");
+            }
+        }
+    }
+
+    public void equipWeapon(Item weapon) {
+        if (weapon.getType() == Item.ItemType.WEAPON) {
+            equippedWeapon = weapon;
+            damage = baseDamage + weapon.getDamageBonus();
+            if (weapon.getSpeedMultiplier() > 0 && speedEffectTimer <= 0) {
+                speedEffectMultiplier = weapon.getSpeedMultiplier();
+                speed = baseSpeed * speedEffectMultiplier;
+                speedEffectTimer = weapon.getEffectDuration();
+                Gdx.app.log("Player", "Equipped weapon with speed boost: " + weapon.getName());
+            }
+            Gdx.app.log("Player", "Equipped weapon: " + weapon.getName() + ", Damage: " + damage);
+        }
+    }
+
+    public void equipArmor(Item armor) {
+        if (armor.getType() == Item.ItemType.ARMOR) {
+            equippedArmor = armor;
+            defense = armor.getDefenseBonus();
+            Gdx.app.log("Player", "Equipped armor: " + armor.getName() + ", Defense: " + defense);
+        }
+    }
+
+    public void usePotion(Item potion) {
+        if (potion.getType() == Item.ItemType.POTION) {
+            if (potion.getHealthRestore() > 0) {
+                setHealth(health + potion.getHealthRestore());
+                Gdx.app.log("Player", "Used potion: " + potion.getName() + ", Restored " + potion.getHealthRestore() + " HP");
+            }
+            if (potion.getSpeedMultiplier() > 0) {
+                speedEffectMultiplier = potion.getSpeedMultiplier();
+                speed = baseSpeed * speedEffectMultiplier;
+                speedEffectTimer = potion.getEffectDuration();
+                Gdx.app.log("Player", "Used potion: " + potion.getName() + ", Speed increased to " + speed + " for " + potion.getEffectDuration() + " seconds");
+            }
+        }
+    }
+
     public int getHealth() { return health; }
     public int getMaxHealth() { return maxHealth; }
     public int getDamage() { return damage; }
+    public int getDefense() { return defense; }
     public float getSpeed() { return speed; }
     public Inventory getInventory() { return inventory; }
+    public Texture getEquippedWeaponTexture() { return equippedWeapon != null ? equippedWeapon.getTexture() : null; }
 
     public void setHealth(int health) { this.health = Math.max(0, Math.min(health, maxHealth)); }
     public void setDamage(int damage) { this.damage = damage; }
@@ -160,5 +213,7 @@ public class Player {
 
     public void dispose() {
         playerSheet.dispose();
+        if (equippedWeapon != null) equippedWeapon.dispose();
+        if (equippedArmor != null) equippedArmor.dispose();
     }
 }

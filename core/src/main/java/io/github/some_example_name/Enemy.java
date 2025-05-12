@@ -1,104 +1,62 @@
 package io.github.some_example_name;
 
-import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.math.MathUtils;
-import com.badlogic.gdx.scenes.scene2d.ui.Image;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 public class Enemy {
     private float x, y;
-    private float speed = 100f;
-    private final Texture enemySheet;
-    private final TextureRegion[] walkLeft, walkRight, walkUp, walkDown;
-    private float animationTime;
-    private int currentFrame;
-    private TextureRegion[] currentAnimation;
-    private float lastX, lastY;
     private int[][] levelMap;
+    private int health = 50; // Пример здоровья врага
+    private boolean isDead = false;
 
     public Enemy(int[][] levelMap) {
         this.levelMap = levelMap;
-        enemySheet = new Texture("enemy.png");
+        // Инициализация позиции (пример)
+        for (int i = 0; i < 20; i++) {
+            for (int j = 0; j < 15; j++) {
+                if (levelMap[i][j] == 0 && Math.random() < 0.05) { // 5% шанс спавна
+                    x = i * Level.TILE_SIZE;
+                    y = j * Level.TILE_SIZE;
+                    return;
+                }
+            }
+        }
+    }
 
-        do {
-            x = MathUtils.random(1, 18) * Level.TILE_SIZE;
-            y = MathUtils.random(1, 13) * Level.TILE_SIZE;
-        } while (levelMap[(int)(x / Level.TILE_SIZE)][(int)(y / Level.TILE_SIZE)] == 1);
+    public List<Item> dropItems() {
+        List<Item> droppedItems = new ArrayList<>();
+        Random random = new Random();
 
-        lastX = x;
-        lastY = y;
-
-        walkRight = new TextureRegion[4];
-        walkLeft = new TextureRegion[4];
-        walkUp = new TextureRegion[4];
-        walkDown = new TextureRegion[4];
-
-        for (int i = 0; i < 4; i++) {
-            walkRight[i] = new TextureRegion(enemySheet, i * 64, 0, 64, 64);
-            walkLeft[i] = new TextureRegion(enemySheet, i * 64, 64, 64, 64);
-            walkUp[i] = new TextureRegion(enemySheet, i * 64, 128, 64, 64);
-            walkDown[i] = new TextureRegion(enemySheet, i * 64, 192, 64, 64);
+        // Шанс дропа Стального меча — 10%
+        if (random.nextFloat() < 0.1f) {
+            droppedItems.add(new Item("Стальной меч", "Прочный и острый", Item.ItemType.WEAPON, 10, 0, 0, "rare_sword.png"));
         }
 
-        animationTime = 0f;
-        currentAnimation = walkDown;
+        // Шанс дропа Огненного меча — 5%
+        if (random.nextFloat() < 0.05f) {
+            droppedItems.add(new Item("Огненный меч", "Пылающий клинок", Item.ItemType.WEAPON, 15, 1.5f, 10, "myth_sword.png"));
+        }
+
+        return droppedItems;
     }
 
     public void update(float playerX, float playerY) {
-        float delta = Gdx.graphics.getDeltaTime();
-        float newX = x;
-        float newY = y;
-
-        lastX = x;
-        lastY = y;
-
-        if (playerX > x) {
-            newX += speed * delta;
-            currentAnimation = walkRight;
-        } else if (playerX < x) {
-            newX -= speed * delta;
-            currentAnimation = walkLeft;
-        }
-        if (playerY > y) {
-            newY += speed * delta;
-            currentAnimation = walkUp;
-        } else if (playerY < y) {
-            newY -= speed * delta;
-            currentAnimation = walkDown;
-        }
-
-        if (!checkCollision(newX, newY)) {
-            x = newX;
-            y = newY;
-        }
-
-        if (isMoving()) {
-            animationTime += delta;
-            currentFrame = (int)(animationTime * 10) % currentAnimation.length;
-        } else {
-            currentFrame = 2;
-        }
+        // Логика движения или атаки (пример)
+        if (health <= 0) isDead = true;
     }
 
-    private boolean checkCollision(float x, float y) {
-        int mapX = (int)(x / Level.TILE_SIZE);
-        int mapY = (int)(y / Level.TILE_SIZE);
-
-        return mapX < 0 || mapX >= 20 || mapY < 0 || mapY >= 15 || levelMap[mapX][mapY] == 1;
-    }
-
-    private boolean isMoving() {
-        return x != lastX || y != lastY;
+    public boolean isDead() {
+        return isDead;
     }
 
     public void render(SpriteBatch batch) {
-        batch.draw(currentAnimation[currentFrame], x, y);
+        // Отрисовка врага (пример)
     }
 
     public void dispose() {
-        enemySheet.dispose();
+        // Освобождение ресурсов, если есть
     }
 }
-

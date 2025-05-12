@@ -1,17 +1,16 @@
 package io.github.some_example_name;
 
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 
-import java.util.List;
-
 public class Renderer {
-    private final SpriteBatch batch;
-    private final Level level;
-    private final Player player;
-    private final List<Enemy> enemies;
+    private SpriteBatch batch;
+    private Player player;
+    private Level level;
+    private java.util.List<Enemy> enemies;
 
-    public Renderer(SpriteBatch batch, Level level, Player player, List<Enemy> enemies) {
+    public Renderer(SpriteBatch batch, Level level, Player player, java.util.List<Enemy> enemies) {
         this.batch = batch;
         this.level = level;
         this.player = player;
@@ -19,7 +18,7 @@ public class Renderer {
     }
 
     public void render() {
-        batch.begin();
+        batch.begin(); // Начинаем рендеринг
 
         int[][] levelMap = level.getLevelMap();
         int mapWidth = levelMap.length;
@@ -53,6 +52,19 @@ public class Renderer {
         // Отрисовка игрока
         batch.draw(player.getCurrentFrame(), player.getX(), player.getY());
 
-        batch.end();
+        // Отрисовка экипированного меча (48x48) справа от персонажа
+        Texture weaponTexture = player.getEquippedWeaponTexture();
+        if (weaponTexture != null) {
+            float weaponX = player.getX() + Level.TILE_SIZE; // 64 пикселя (ширина персонажа)
+            float weaponY = player.getY() + (Level.TILE_SIZE - 48) / 2; // Центрируем по вертикали
+            batch.draw(weaponTexture, weaponX, weaponY, 48, 48);
+        }
+
+        batch.end(); // Завершаем рендеринг
+    }
+
+    public void dispose() {
+        // Освобождение ресурсов, если нужно
+        batch.dispose();
     }
 }

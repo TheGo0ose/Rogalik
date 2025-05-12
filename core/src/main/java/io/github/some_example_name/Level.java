@@ -17,7 +17,7 @@ public class Level {
 
     public Level() {
         levelMap = new int[60][15]; // увеличено для длинной генерации
-        wallSheet = new Texture("wall.png");
+        wallSheet = new Texture("wallref.png");
         floor = new Texture("floor.png");
 
         wallRegion = new TextureRegion[10];

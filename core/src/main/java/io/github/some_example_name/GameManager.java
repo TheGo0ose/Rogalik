@@ -23,6 +23,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.NinePatchDrawable;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 public class GameManager {
@@ -33,25 +34,21 @@ public class GameManager {
     private Renderer renderer;
     private final OrthographicCamera camera;
 
-    // Переменные для меню
     private Stage menuStage;
     private Texture menuTexture;
     private Texture soundTexture;
     private Texture buttsTexture;
     private Texture menuBackgroundTexture;
 
-    // Переменные для аудио
     private Music menuMusic;
     private Music gameMusic;
     private Sound buttonClickSound;
-    private GameState currentMusicState; // Отслеживание текущего состояния музыки
+    private GameState currentMusicState;
 
-    // Переменные для инвентаря и статистики
     private Stage inventoryStage;
     private Table inventoryTable;
     private boolean inventoryVisible = false;
 
-    // Переменные для настроек
     private Stage settingsStage;
     private Table settingsTable;
     private boolean settingsVisible = false;
@@ -84,47 +81,48 @@ public class GameManager {
         player = new Player(level.getLevelMap());
         player.setStartPosition();
 
+        // Добавляем тестовое зелье в инвентарь
+        Item healingPotion = new Item("Healing Potion", "Restores 20 HP", Item.ItemType.POTION, 20, 0, 0, "healing_potion.png");
+        player.getInventory().addItem(healingPotion);
+
         spawnEnemies(3);
 
         renderer = new Renderer(batch, level, player, enemies);
 
-        // Инициализация аудио
         try {
-            menuMusic = Gdx.audio.newMusic(Gdx.files.internal("menu_music.mp3"));
+            menuMusic = Gdx.audio.newMusic(Gdx.files.internal("menu_music.wav"));
             Gdx.app.log("GameManager", "menuMusic loaded");
         } catch (Exception e) {
-            Gdx.app.error("GameManager", "Failed to load menu_music.mp3", e);
+            Gdx.app.error("GameManager", "Failed to load menu_music.wav", e);
             throw e;
         }
         try {
-            gameMusic = Gdx.audio.newMusic(Gdx.files.internal("game_music.mp3"));
+            gameMusic = Gdx.audio.newMusic(Gdx.files.internal("game_music.wav"));
             Gdx.app.log("GameManager", "gameMusic loaded");
         } catch (Exception e) {
-            Gdx.app.error("GameManager", "Failed to load game_music.mp3", e);
+            Gdx.app.error("GameManager", "Failed to load game_music.wav", e);
             throw e;
         }
         try {
-            buttonClickSound = Gdx.audio.newSound(Gdx.files.internal("button_click.mp3"));
+            buttonClickSound = Gdx.audio.newSound(Gdx.files.internal("button_click.wav"));
             Gdx.app.log("GameManager", "buttonClickSound loaded");
         } catch (Exception e) {
-            Gdx.app.error("GameManager", "Failed to load button_click.mp3", e);
+            Gdx.app.error("GameManager", "Failed to load button_click.wav", e);
             throw e;
         }
         menuMusic.setLooping(true);
         gameMusic.setLooping(true);
 
-        // Инициализация главного меню
         gameState = GameState.MENU;
-        currentMusicState = null; // Инициализируем как null, чтобы запустить музыку
+        currentMusicState = null;
         menuStage = new Stage(new ScreenViewport());
         Gdx.input.setInputProcessor(menuStage);
 
-        // Добавляем фоновое изображение
         menuBackgroundTexture = new Texture(Gdx.files.internal("menu_butt.png"));
         Image backgroundImage = new Image(menuBackgroundTexture);
         backgroundImage.setSize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         backgroundImage.setPosition(200, 70);
-        backgroundImage.setSize(240, 347); // Пример
+        backgroundImage.setSize(240, 347);
         menuStage.addActor(backgroundImage);
 
         Table menuTable = new Table();
@@ -216,25 +214,21 @@ public class GameManager {
             }
         });
 
-        // Инициализация интерфейса инвентаря
         inventoryStage = new Stage(new ScreenViewport());
         inventoryTable = new Table();
         inventoryTable.setFillParent(true);
         inventoryStage.addActor(inventoryTable);
 
-        // Инициализация интерфейса настроек
         settingsStage = new Stage(new ScreenViewport());
         settingsTable = new Table();
         settingsTable.setFillParent(true);
         settingsStage.addActor(settingsTable);
 
-        // Стили для интерфейса
         Label.LabelStyle labelStyle = new Label.LabelStyle(new BitmapFont(), Color.WHITE);
         TextButton.TextButtonStyle buttonStyle = new TextButton.TextButtonStyle();
         buttonStyle.font = new BitmapFont();
         buttonStyle.fontColor = Color.WHITE;
 
-        // Текстуры для элементов управления звуком
         try {
             soundTexture = new Texture(Gdx.files.internal("soundbuttons.png"));
             Gdx.app.log("GameManager", "soundTexture loaded");
@@ -271,11 +265,9 @@ public class GameManager {
         arrowRightStyle.up = new NinePatchDrawable(arrowRightPatch);
         arrowRightStyle.down = new NinePatchDrawable(arrowRightDownPatch);
 
-        // Сохраняем стиль прогресс-бара
         progressBarStyle = new ImageButton.ImageButtonStyle();
         progressBarStyle.up = new NinePatchDrawable(progressBarPatch);
 
-        // Кнопка включения/выключения звука
         ImageButton soundButton = new ImageButton(soundButtonStyle);
         soundButton.addListener(new ClickListener() {
             @Override
@@ -294,7 +286,6 @@ public class GameManager {
             }
         });
 
-        // Кнопка уменьшения громкости
         ImageButton decreaseVolumeButton = new ImageButton(arrowLeftStyle);
         decreaseVolumeButton.addListener(new ClickListener() {
             @Override
@@ -310,11 +301,9 @@ public class GameManager {
             }
         });
 
-        // Прогресс-бар громкости (сохраняем как поле)
         progressBar = new ImageButton(progressBarStyle);
         progressBar.setSize(300 * volume, 45);
 
-        // Кнопка увеличения громкости
         ImageButton increaseVolumeButton = new ImageButton(arrowRightStyle);
         increaseVolumeButton.addListener(new ClickListener() {
             @Override
@@ -330,7 +319,6 @@ public class GameManager {
             }
         });
 
-        // Добавление элементов в таблицу настроек
         settingsTable.add(new Label("Settings", labelStyle)).colspan(5).pad(10);
         settingsTable.row();
         settingsTable.add(new Label("Sound:", labelStyle)).pad(5);
@@ -340,7 +328,6 @@ public class GameManager {
         settingsTable.add(increaseVolumeButton).size(57, 57).pad(5);
         settingsTable.row();
 
-        // Кнопка возврата в главное меню
         TextButton backButton = new TextButton("Back", buttonStyle);
         backButton.addListener(new ClickListener() {
             @Override
@@ -358,56 +345,8 @@ public class GameManager {
         });
         settingsTable.add(backButton).colspan(5).pad(10);
 
-        // Добавляем статы персонажа в инвентарь
-        inventoryTable.add(new Label("Character Stats", labelStyle)).colspan(2).pad(10);
-        inventoryTable.row();
-        inventoryTable.add(new Label("Health: " + player.getHealth() + "/" + player.getMaxHealth(), labelStyle)).pad(5);
-        inventoryTable.row();
-        inventoryTable.add(new Label("Damage: " + player.getDamage(), labelStyle)).pad(5);
-        inventoryTable.row();
-        inventoryTable.add(new Label("Speed: " + player.getSpeed(), labelStyle)).pad(5);
-        inventoryTable.row();
+        updateInventoryUI();
 
-        // Добавляем список предметов
-        inventoryTable.add(new Label("Inventory", labelStyle)).colspan(2).pad(10);
-        inventoryTable.row();
-        for (Item item : player.getInventory().getItems()) {
-            inventoryTable.add(new Label(item.getName() + ": " + item.getDescription(), labelStyle)).pad(5);
-            TextButton useButton = new TextButton("Use", buttonStyle);
-            useButton.addListener(new ClickListener() {
-                @Override
-                public void clicked(InputEvent event, float x, float y) {
-                    try {
-                        if (soundEnabled) buttonClickSound.play(volume);
-                        useItem(item);
-                        Gdx.app.log("GameManager", "Use button clicked for item: " + item.getName());
-                    } catch (Exception e) {
-                        Gdx.app.error("GameManager", "Error in useButton click", e);
-                    }
-                }
-            });
-            inventoryTable.add(useButton).pad(5);
-            inventoryTable.row();
-        }
-
-        // Кнопка закрытия инвентаря
-        TextButton closeButton = new TextButton("Close", buttonStyle);
-        closeButton.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                try {
-                    if (soundEnabled) buttonClickSound.play(volume);
-                    inventoryVisible = false;
-                    Gdx.input.setInputProcessor(null);
-                    Gdx.app.log("GameManager", "Close button clicked");
-                } catch (Exception e) {
-                    Gdx.app.error("GameManager", "Error in closeButton click", e);
-                }
-            }
-        });
-        inventoryTable.add(closeButton).colspan(2).pad(10);
-
-        // Начать воспроизведение музыки для начального состояния
         Gdx.app.log("GameManager", "Initial soundEnabled: " + soundEnabled + ", volume: " + volume);
         updateMusic();
         Gdx.app.log("GameManager", "Initialize completed");
@@ -424,22 +363,19 @@ public class GameManager {
             gameMusic.setVolume(0);
             Gdx.app.log("GameManager", "Sound disabled, volume set to 0");
         }
-        updateMusic(); // Обновляем музыку при изменении громкости
+        updateMusic();
     }
 
     private void updateMusic() {
         Gdx.app.log("GameManager", "Updating music, gameState: " + gameState + ", soundEnabled: " + soundEnabled);
 
-        // Проверяем, нужно ли менять музыку
-        if (currentMusicState == gameState && menuMusic.isPlaying() || gameMusic.isPlaying()) {
-            return; // Музыка уже играет для текущего состояния
+        if (currentMusicState == gameState && (menuMusic.isPlaying() || gameMusic.isPlaying())) {
+            return;
         }
 
-        // Останавливаем текущую музыку
         menuMusic.stop();
         gameMusic.stop();
 
-        // Воспроизводим новую музыку
         if (soundEnabled) {
             if (gameState == GameState.MENU || gameState == GameState.SETTINGS) {
                 if (!menuMusic.isPlaying()) {
@@ -456,18 +392,19 @@ public class GameManager {
             }
         }
 
-        currentMusicState = gameState; // Обновляем текущее состояние музыки
+        currentMusicState = gameState;
     }
 
     private void useItem(Item item) {
-        if (item.getName().equals("Potion")) {
-            player.setHealth(player.getHealth() + 20);
+        if (item.getType() == Item.ItemType.POTION) {
+            player.usePotion(item);
             player.getInventory().removeItem(item);
-            updateInventoryUI();
-        } else if (item.getName().equals("Sword")) {
-            player.setDamage(player.getDamage() + 5);
-            Gdx.app.log("Inventory", "Equipped " + item.getName());
+        } else if (item.getType() == Item.ItemType.WEAPON) {
+            player.equipWeapon(item);
+        } else if (item.getType() == Item.ItemType.ARMOR) {
+            player.equipArmor(item);
         }
+        updateInventoryUI();
     }
 
     private void updateInventoryUI() {
@@ -477,33 +414,55 @@ public class GameManager {
         buttonStyle.font = new BitmapFont();
         buttonStyle.fontColor = Color.WHITE;
 
-        inventoryTable.add(new Label("Character Stats", labelStyle)).colspan(2).pad(10);
+        // Отображаем статистику персонажа
+        inventoryTable.add(new Label("Character Stats", labelStyle)).colspan(3).pad(10);
         inventoryTable.row();
         inventoryTable.add(new Label("Health: " + player.getHealth() + "/" + player.getMaxHealth(), labelStyle)).pad(5);
         inventoryTable.row();
         inventoryTable.add(new Label("Damage: " + player.getDamage(), labelStyle)).pad(5);
         inventoryTable.row();
+        inventoryTable.add(new Label("Defense: " + player.getDefense(), labelStyle)).pad(5);
+        inventoryTable.row();
         inventoryTable.add(new Label("Speed: " + player.getSpeed(), labelStyle)).pad(5);
         inventoryTable.row();
 
-        inventoryTable.add(new Label("Inventory", labelStyle)).colspan(2).pad(10);
+        // Отображаем список предметов
+        inventoryTable.add(new Label("Inventory (" + player.getInventory().getItems().size() + "/10)", labelStyle)).colspan(3).pad(10);
         inventoryTable.row();
         for (Item item : player.getInventory().getItems()) {
-            inventoryTable.add(new Label(item.getName() + ": " + item.getDescription(), labelStyle)).pad(5);
-            TextButton useButton = new TextButton("Use", buttonStyle);
-            useButton.addListener(new ClickListener() {
+            // Преобразуем Texture в TextureRegion
+            TextureRegion itemRegion = new TextureRegion(item.getTexture());
+            inventoryTable.add(new Image(itemRegion)).size(48, 48).pad(5);
+
+            // Информация о предмете
+            String itemInfo = item.getName() + " (" + item.getType() + "): " + item.getDescription();
+            if (item.getType() == Item.ItemType.WEAPON) {
+                itemInfo += " | Damage: +" + item.getDamageBonus();
+                if (item.getSpeedMultiplier() > 0) {
+                    itemInfo += " | Speed x" + item.getSpeedMultiplier() + " for " + item.getEffectDuration() + "s";
+                }
+            } else if (item.getType() == Item.ItemType.ARMOR) {
+                itemInfo += " | Defense: +" + item.getDefenseBonus();
+            } else if (item.getType() == Item.ItemType.POTION) {
+                if (item.getHealthRestore() > 0) {
+                    itemInfo += " | Restores: " + item.getHealthRestore() + " HP";
+                }
+                if (item.getSpeedMultiplier() > 0) {
+                    itemInfo += " | Speed x" + item.getSpeedMultiplier() + " for " + item.getEffectDuration() + "s";
+                }
+            }
+            inventoryTable.add(new Label(itemInfo, labelStyle)).pad(5);
+
+            // Кнопка "Use" для зелий, "Equip" для оружия и брони
+            TextButton actionButton = new TextButton(item.getType() == Item.ItemType.POTION ? "Use" : "Equip", buttonStyle);
+            actionButton.addListener(new ClickListener() {
                 @Override
                 public void clicked(InputEvent event, float x, float y) {
-                    try {
-                        if (soundEnabled) buttonClickSound.play(volume);
-                        useItem(item);
-                        Gdx.app.log("GameManager", "Use button clicked for item: " + item.getName());
-                    } catch (Exception e) {
-                        Gdx.app.error("GameManager", "Error in useButton click", e);
-                    }
+                    if (soundEnabled) buttonClickSound.play(volume);
+                    useItem(item);
                 }
             });
-            inventoryTable.add(useButton).pad(5);
+            inventoryTable.add(actionButton).pad(5);
             inventoryTable.row();
         }
 
@@ -511,17 +470,12 @@ public class GameManager {
         closeButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                try {
-                    if (soundEnabled) buttonClickSound.play(volume);
-                    inventoryVisible = false;
-                    Gdx.input.setInputProcessor(null);
-                    Gdx.app.log("GameManager", "Close button clicked");
-                } catch (Exception e) {
-                    Gdx.app.error("GameManager", "Error in closeButton click", e);
-                }
+                if (soundEnabled) buttonClickSound.play(volume);
+                inventoryVisible = false;
+                Gdx.input.setInputProcessor(null);
             }
         });
-        inventoryTable.add(closeButton).colspan(2).pad(10);
+        inventoryTable.add(closeButton).colspan(3).pad(10);
     }
 
     private void spawnEnemies(int count) {
@@ -543,8 +497,21 @@ public class GameManager {
 
             if (!inventoryVisible) {
                 player.handleInput();
-                for (Enemy enemy : enemies) {
+                Iterator<Enemy> enemyIterator = enemies.iterator();
+                while (enemyIterator.hasNext()) {
+                    Enemy enemy = enemyIterator.next();
                     enemy.update(player.getX(), player.getY());
+                    if (enemy.isDead()) {
+                        List<Item> droppedItems = enemy.dropItems();
+                        for (Item item : droppedItems) {
+                            if (player.getInventory().addItem(item)) {
+                                if (item.getType() == Item.ItemType.WEAPON) {
+                                    player.equipWeapon(item);
+                                }
+                            }
+                        }
+                        enemyIterator.remove();
+                    }
                 }
                 camera.position.set(player.getX() + Level.TILE_SIZE / 2, player.getY() + Level.TILE_SIZE / 2, 0);
                 camera.update();
@@ -558,7 +525,6 @@ public class GameManager {
             settingsStage.act(Gdx.graphics.getDeltaTime());
         }
 
-        // Вызываем updateMusic только при необходимости
         if (currentMusicState != gameState) {
             updateMusic();
         }
