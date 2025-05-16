@@ -29,7 +29,7 @@ public class Player {
 
     public Player(int[][] levelMap) {
         this.levelMap = levelMap;
-        playerSheet = new Texture("player.png");
+        playerSheet = new Texture("player2.png");
         animationTime = 0f;
 
         walkRight = new TextureRegion[4];
@@ -38,15 +38,15 @@ public class Player {
         walkDown = new TextureRegion[4];
 
         for (int i = 0; i < 4; i++) {
-            walkRight[i] = new TextureRegion(playerSheet, i * 64, 192, 64, 64);
-            walkLeft[i] = new TextureRegion(playerSheet, i * 64, 128, 64, 64);
-            walkUp[i] = new TextureRegion(playerSheet, i * 64, 64, 64, 64);
-            walkDown[i] = new TextureRegion(playerSheet, i * 64, 0, 64, 64);
+            walkRight[i] = new TextureRegion(playerSheet, i * 48, 192, 64, 64);
+            walkUp[i] = new TextureRegion(playerSheet, i * 48, 128, 64, 64);
+            walkLeft[i] = new TextureRegion(playerSheet, i * 48, 64, 64, 64);
+            walkDown[i] = new TextureRegion(playerSheet, i * 48, 0, 64, 64);
         }
 
         inventory = new Inventory();
         // Добавляем базовый меч
-        Item rustySword = new Item("Ржавый меч", "Старый, но всё ещё острый", Item.ItemType.WEAPON, 5, 0, 0, "base_sword.png");
+        Item rustySword = new Item("Железный меч", "Меч который дается всем воинам, перед войной", Item.ItemType.WEAPON, 5, 0, 0, "base_sword.png");
         inventory.addItem(rustySword);
         equipWeapon(rustySword); // Автоматически экипируем базовый меч
 
@@ -121,8 +121,9 @@ public class Player {
     }
 
     private boolean checkCollision(float x, float y) {
-        int[] checkX = new int[]{(int)x / Level.TILE_SIZE, (int)(x + Level.TILE_SIZE - 1) / Level.TILE_SIZE};
-        int[] checkY = new int[]{(int)y / Level.TILE_SIZE, (int)(y + Level.TILE_SIZE - 1) / Level.TILE_SIZE};
+        // Учитываем новый размер персонажа (96x96)
+        int[] checkX = new int[]{(int)x / Level.TILE_SIZE, (int)(x + 96 - 1) / Level.TILE_SIZE};
+        int[] checkY = new int[]{(int)y / Level.TILE_SIZE, (int)(y + 96 - 1) / Level.TILE_SIZE};
 
         for (int cx : checkX) {
             for (int cy : checkY) {

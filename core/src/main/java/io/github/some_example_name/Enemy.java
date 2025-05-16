@@ -32,12 +32,12 @@ public class Enemy {
 
         // Шанс дропа Стального меча — 10%
         if (random.nextFloat() < 0.1f) {
-            droppedItems.add(new Item("Стальной меч", "Прочный и острый", Item.ItemType.WEAPON, 10, 0, 0, "rare_sword.png"));
+            droppedItems.add(new Item("Редкий меч", "Прочный и острый", Item.ItemType.WEAPON, 10, 0, 0, "rare_sword.png"));
         }
 
         // Шанс дропа Огненного меча — 5%
         if (random.nextFloat() < 0.05f) {
-            droppedItems.add(new Item("Огненный меч", "Пылающий клинок", Item.ItemType.WEAPON, 15, 1.5f, 10, "myth_sword.png"));
+            droppedItems.add(new Item("Мифический меч", "Пылающий клинок", Item.ItemType.WEAPON, 15, 1.5f, 10, "myth_sword.png"));
         }
 
         return droppedItems;

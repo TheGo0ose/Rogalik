@@ -49,22 +49,17 @@ public class Renderer {
             enemy.render(batch);
         }
 
-        // Отрисовка игрока
-        batch.draw(player.getCurrentFrame(), player.getX(), player.getY());
+        // Отрисовка игрока (увеличиваем размер до 96x96 пикселей)
+        batch.draw(player.getCurrentFrame(), player.getX(), player.getY(), 96, 96);
 
-        // Отрисовка экипированного меча (48x48) справа от персонажа
+        // Отрисовка экипированного меча (32x32) ближе к персонажу
         Texture weaponTexture = player.getEquippedWeaponTexture();
         if (weaponTexture != null) {
-            float weaponX = player.getX() + Level.TILE_SIZE; // 64 пикселя (ширина персонажа)
-            float weaponY = player.getY() + (Level.TILE_SIZE - 48) / 2; // Центрируем по вертикали
-            batch.draw(weaponTexture, weaponX, weaponY, 48, 48);
+            float weaponX = player.getX() + 22; // Смещение на 16 пикселей справа от персонажа
+            float weaponY = player.getY() + (96 - 32) / 2; // Центрируем по вертикали
+            batch.draw(weaponTexture, weaponX, weaponY, 32, 32); // Уменьшаем размер меча до 32x32
         }
 
         batch.end(); // Завершаем рендеринг
-    }
-
-    public void dispose() {
-        // Освобождение ресурсов, если нужно
-        batch.dispose();
     }
 }
