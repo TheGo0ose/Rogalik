@@ -17,7 +17,7 @@ public class Level {
 
     public Level() {
         levelMap = new int[60][15]; // Размер карты
-        wallSheet = new Texture("wallref.png");
+        wallSheet = new Texture("wall.png");
         floor = new Texture("floor.png");
 
         wallRegion = new TextureRegion[10];
