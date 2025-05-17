@@ -57,6 +57,9 @@ public class GameManager {
     private ImageButton progressBar;
     private ImageButton.ImageButtonStyle progressBarStyle;
 
+    private float attackCooldown = 0f;
+    private final float ATTACK_COOLDOWN_DURATION = 0.5f;
+
     private enum GameState { MENU, PLAYING, SETTINGS }
     private GameState gameState;
 
@@ -69,7 +72,7 @@ public class GameManager {
     public void initialize() {
         Gdx.app.log("GameManager", "Starting initialize");
         level = new Level();
-        level.generateLevel(); // Здесь уже вызывается новая генерация
+        level.generateLevel();
         try {
             menuTexture = new Texture(Gdx.files.internal("menu_butt.png"));
             Gdx.app.log("GameManager", "menuTexture loaded");
@@ -78,10 +81,9 @@ public class GameManager {
             throw e;
         }
 
-        player = new Player(level.getLevelMap(), level); // Передаём level
+        player = new Player(level.getLevelMap(), level);
         player.setStartPosition();
 
-        // Добавляем тестовое зелье в инвентарь
         Item healingPotion = new Item("Healing Potion", "Restores 20 HP", Item.ItemType.POTION, 20, 0, 0, "healing_potion.png");
         player.getInventory().addItem(healingPotion);
 
@@ -254,14 +256,12 @@ public class GameManager {
         NinePatch progressBarPatch = new NinePatch(progressBarRegion, 5, 5, 5, 5);
 
         ImageButton.ImageButtonStyle soundButtonStyle = new ImageButton.ImageButtonStyle();
+        ImageButton.ImageButtonStyle arrowLeftStyle = new ImageButton.ImageButtonStyle();
+        ImageButton.ImageButtonStyle arrowRightStyle = new ImageButton.ImageButtonStyle();
         soundButtonStyle.up = new NinePatchDrawable(soundPatch);
         soundButtonStyle.down = new NinePatchDrawable(soundDownPatch);
-
-        ImageButton.ImageButtonStyle arrowLeftStyle = new ImageButton.ImageButtonStyle();
         arrowLeftStyle.up = new NinePatchDrawable(arrowLeftPatch);
         arrowLeftStyle.down = new NinePatchDrawable(arrowLeftDownPatch);
-
-        ImageButton.ImageButtonStyle arrowRightStyle = new ImageButton.ImageButtonStyle();
         arrowRightStyle.up = new NinePatchDrawable(arrowRightPatch);
         arrowRightStyle.down = new NinePatchDrawable(arrowRightDownPatch);
 
@@ -414,7 +414,6 @@ public class GameManager {
         buttonStyle.font = new BitmapFont();
         buttonStyle.fontColor = Color.WHITE;
 
-        // Отображаем статистику персонажа
         inventoryTable.add(new Label("Character Stats", labelStyle)).colspan(3).pad(10);
         inventoryTable.row();
         inventoryTable.add(new Label("Health: " + player.getHealth() + "/" + player.getMaxHealth(), labelStyle)).pad(5);
@@ -426,15 +425,12 @@ public class GameManager {
         inventoryTable.add(new Label("Speed: " + player.getSpeed(), labelStyle)).pad(5);
         inventoryTable.row();
 
-        // Отображаем список предметов
         inventoryTable.add(new Label("Inventory (" + player.getInventory().getItems().size() + "/10)", labelStyle)).colspan(3).pad(10);
         inventoryTable.row();
         for (Item item : player.getInventory().getItems()) {
-            // Преобразуем Texture в TextureRegion
             TextureRegion itemRegion = new TextureRegion(item.getTexture());
             inventoryTable.add(new Image(itemRegion)).size(48, 48).pad(5);
 
-            // Информация о предмете
             String itemInfo = item.getName() + " (" + item.getType() + "): " + item.getDescription();
             if (item.getType() == Item.ItemType.WEAPON) {
                 itemInfo += " | Damage: +" + item.getDamageBonus();
@@ -453,7 +449,6 @@ public class GameManager {
             }
             inventoryTable.add(new Label(itemInfo, labelStyle)).pad(5);
 
-            // Кнопка "Use" для зелий, "Equip" для оружия и брони
             TextButton actionButton = new TextButton(item.getType() == Item.ItemType.POTION ? "Use" : "Equip", buttonStyle);
             actionButton.addListener(new ClickListener() {
                 @Override
@@ -479,8 +474,11 @@ public class GameManager {
     }
 
     private void spawnEnemies(int count) {
+        Gdx.app.log("GameManager", "Spawning " + count + " enemies");
         for (int i = 0; i < count; i++) {
-            enemies.add(new Enemy(level.getLevelMap()));
+            Enemy enemy = new Enemy(level.getLevelMap(), level);
+            enemies.add(enemy);
+            Gdx.app.log("GameManager", "Enemy " + (i + 1) + " spawned at (" + enemy.getX() + "," + enemy.getY() + ")");
         }
     }
 
@@ -490,17 +488,51 @@ public class GameManager {
                 inventoryVisible = !inventoryVisible;
                 if (inventoryVisible) {
                     Gdx.input.setInputProcessor(inventoryStage);
+                    Gdx.app.log("GameManager", "Inventory opened");
                 } else {
                     Gdx.input.setInputProcessor(null);
+                    Gdx.app.log("GameManager", "Inventory closed");
+                }
+            }
+
+            if (attackCooldown > 0) {
+                attackCooldown -= Gdx.graphics.getDeltaTime();
+            }
+
+            if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
+                if (gameState != GameState.PLAYING) {
+                    Gdx.app.log("GameManager", "SPACE pressed but ignored (gameState=" + gameState + ")");
+                } else if (inventoryVisible) {
+                    Gdx.app.log("GameManager", "SPACE pressed but ignored (inventoryVisible=true)");
+                } else if (attackCooldown > 0) {
+                    Gdx.app.log("GameManager", "SPACE pressed but ignored (attackCooldown=" + attackCooldown + ")");
+                } else {
+                    Gdx.app.log("GameManager", "Player attack triggered at (" + player.getX() + "," + player.getY() + ")");
+                    player.triggerAttack();
+                    for (Enemy enemy : enemies) {
+                        if (enemy.isDead()) continue;
+                        boolean collision = enemy.checkCollision(player.getX(), player.getY());
+                        if (collision) {
+                            int playerDamage = player.getDamage();
+                            enemy.takeDamage(playerDamage);
+                            attackCooldown = ATTACK_COOLDOWN_DURATION;
+                            Gdx.app.log("GameManager", "Player hit enemy at (" + enemy.getX() + "," + enemy.getY() + "). " +
+                                    "Dealt=" + playerDamage + ", Enemy HP=" + enemy.getHealth());
+                            break;
+                        } else {
+                            Gdx.app.log("GameManager", "No collision with enemy at (" + enemy.getX() + "," + enemy.getY() + ")");
+                        }
+                    }
                 }
             }
 
             if (!inventoryVisible) {
                 player.handleInput();
+                float delta = Gdx.graphics.getDeltaTime();
                 Iterator<Enemy> enemyIterator = enemies.iterator();
                 while (enemyIterator.hasNext()) {
                     Enemy enemy = enemyIterator.next();
-                    enemy.update(player.getX(), player.getY());
+                    enemy.update(player.getX(), player.getY(), player, delta);
                     if (enemy.isDead()) {
                         List<Item> droppedItems = enemy.dropItems();
                         for (Item item : droppedItems) {
@@ -511,8 +543,21 @@ public class GameManager {
                             }
                         }
                         enemyIterator.remove();
+                        enemy.dispose();
                     }
                 }
+
+                if (player.getHealth() <= 0) {
+                    Gdx.app.log("GameManager", "Player died! Returning to menu.");
+                    gameState = GameState.MENU;
+                    Gdx.input.setInputProcessor(menuStage);
+                    player = new Player(level.getLevelMap(), level);
+                    player.setStartPosition();
+                    enemies.clear();
+                    spawnEnemies(3);
+                    updateInventoryUI();
+                }
+
                 camera.position.set(player.getX() + Level.TILE_SIZE / 2, player.getY() + Level.TILE_SIZE / 2, 0);
                 camera.update();
                 batch.setProjectionMatrix(camera.combined);
