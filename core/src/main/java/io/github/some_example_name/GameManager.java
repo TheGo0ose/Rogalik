@@ -69,7 +69,7 @@ public class GameManager {
     public void initialize() {
         Gdx.app.log("GameManager", "Starting initialize");
         level = new Level();
-        level.generateLevel();
+        level.generateLevel(); // Здесь уже вызывается новая генерация
         try {
             menuTexture = new Texture(Gdx.files.internal("menu_butt.png"));
             Gdx.app.log("GameManager", "menuTexture loaded");
@@ -78,7 +78,7 @@ public class GameManager {
             throw e;
         }
 
-        player = new Player(level.getLevelMap());
+        player = new Player(level.getLevelMap(), level); // Передаём level
         player.setStartPosition();
 
         // Добавляем тестовое зелье в инвентарь

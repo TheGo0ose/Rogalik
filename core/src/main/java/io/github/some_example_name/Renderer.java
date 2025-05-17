@@ -24,22 +24,19 @@ public class Renderer {
         int mapWidth = levelMap.length;
         int mapHeight = levelMap[0].length;
 
-        // Отрисовка пола
+        // Отрисовка пола и стен с проверкой значений
         for (int x = 0; x < mapWidth; x++) {
             for (int y = 0; y < mapHeight; y++) {
-                TextureRegion floorTexture = level.getFloorRegion(x, y);
-                if (floorTexture != null) {
-                    batch.draw(floorTexture, x * Level.TILE_SIZE, y * Level.TILE_SIZE);
-                }
-            }
-        }
-
-        // Отрисовка стен
-        for (int x = 0; x < mapWidth; x++) {
-            for (int y = 0; y < mapHeight; y++) {
-                TextureRegion wallTexture = level.getWallRegion(x, y);
-                if (wallTexture != null) {
-                    batch.draw(wallTexture, x * Level.TILE_SIZE, y * Level.TILE_SIZE);
+                if (levelMap[x][y] == 0) { // Только пол
+                    TextureRegion floorTexture = level.getFloorRegion(x, y);
+                    if (floorTexture != null) {
+                        batch.draw(floorTexture, x * Level.TILE_SIZE, y * Level.TILE_SIZE, Level.TILE_SIZE, Level.TILE_SIZE);
+                    }
+                } else if (levelMap[x][y] == 1) { // Только стены
+                    TextureRegion wallTexture = level.getWallRegion(x, y);
+                    if (wallTexture != null) {
+                        batch.draw(wallTexture, x * Level.TILE_SIZE, y * Level.TILE_SIZE, Level.TILE_SIZE, Level.TILE_SIZE);
+                    }
                 }
             }
         }
@@ -55,7 +52,7 @@ public class Renderer {
         // Отрисовка экипированного меча (32x32) ближе к персонажу
         Texture weaponTexture = player.getEquippedWeaponTexture();
         if (weaponTexture != null) {
-            float weaponX = player.getX() + 22; // Смещение на 16 пикселей справа от персонажа
+            float weaponX = player.getX() + 22; // Смещение на 22 пикселя справа от персонажа
             float weaponY = player.getY() + (96 - 32) / 2; // Центрируем по вертикали
             batch.draw(weaponTexture, weaponX, weaponY, 32, 32); // Уменьшаем размер меча до 32x32
         }

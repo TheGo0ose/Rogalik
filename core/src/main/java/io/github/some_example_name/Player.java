@@ -14,6 +14,7 @@ public class Player {
     private float animationTime;
     private int currentFrame;
     private int[][] levelMap;
+    private Level level;
 
     private int health = 100;
     private int maxHealth = 100;
@@ -27,8 +28,9 @@ public class Player {
     private float speedEffectTimer;
     private float speedEffectMultiplier;
 
-    public Player(int[][] levelMap) {
+    public Player(int[][] levelMap, Level level) {
         this.levelMap = levelMap;
+        this.level = level;
         playerSheet = new Texture("player2.png");
         animationTime = 0f;
 
@@ -45,10 +47,9 @@ public class Player {
         }
 
         inventory = new Inventory();
-        // Добавляем базовый меч
         Item rustySword = new Item("Железный меч", "Меч который дается всем воинам, перед войной", Item.ItemType.WEAPON, 5, 0, 0, "base_sword.png");
         inventory.addItem(rustySword);
-        equipWeapon(rustySword); // Автоматически экипируем базовый меч
+        equipWeapon(rustySword);
 
         this.damage = baseDamage + (equippedWeapon != null ? equippedWeapon.getDamageBonus() : 0);
         this.defense = 0;
@@ -57,33 +58,46 @@ public class Player {
     }
 
     public void setStartPosition() {
-        int startX = 10;
-        int startY = 7;
+        Room startRoom = null;
+        for (Room room : level.rooms) {
+            if (!room.neighbors.isEmpty()) {
+                startRoom = room;
+                break;
+            }
+        }
 
-        if (levelMap[startX][startY] == 0 && isValidStartPosition(startX, startY)) {
-            x = startX * Level.TILE_SIZE;
-            y = startY * Level.TILE_SIZE;
-        } else {
-            for (int i = 1; i < 19; i++) {
-                for (int j = 1; j < 14; j++) {
-                    if (levelMap[i][j] == 0 && isValidStartPosition(i, j)) {
+        if (startRoom != null) {
+            // Ищем свободную клетку внутри комнаты
+            boolean found = false;
+            for (int i = startRoom.x + 1; i < startRoom.x + startRoom.width - 1; i++) {
+                for (int j = startRoom.y + 1; j < startRoom.y + startRoom.height - 1; j++) {
+                    if (levelMap[i][j] == 0) { // Только клетки с полом
                         x = i * Level.TILE_SIZE;
                         y = j * Level.TILE_SIZE;
+                        found = true;
+                        Gdx.app.log("Player", "Starting position set at (" + x + "," + y + ") in room at (" + startRoom.x + "," + startRoom.y + ")");
+                        break;
+                    }
+                }
+                if (found) break;
+            }
+            if (!found) {
+                Gdx.app.log("Player", "Не удалось найти свободную клетку в комнате (" + startRoom.x + "," + startRoom.y + ")");
+            }
+        } else {
+            // Резервный вариант
+            for (int i = 1; i < levelMap.length; i++) {
+                for (int j = 1; j < levelMap[0].length; j++) {
+                    if (levelMap[i][j] == 0) {
+                        x = i * Level.TILE_SIZE;
+                        y = j * Level.TILE_SIZE;
+                        Gdx.app.log("Player", "Fallback starting position set at (" + x + "," + y + ")");
                         return;
                     }
                 }
             }
             Gdx.app.log("Player", "Не удалось найти подходящую стартовую позицию!");
         }
-    }
-
-    private boolean isValidStartPosition(int x, int y) {
-        int openPaths = 0;
-        if (x > 0 && levelMap[x - 1][y] == 0) openPaths++;
-        if (x < 19 && levelMap[x + 1][y] == 0) openPaths++;
-        if (y > 0 && levelMap[x][y - 1] == 0) openPaths++;
-        if (y < 14 && levelMap[x][y + 1] == 0) openPaths++;
-        return openPaths >= 2;
     }
 
     public void handleInput() {
@@ -121,13 +135,20 @@ public class Player {
     }
 
     private boolean checkCollision(float x, float y) {
-        // Учитываем новый размер персонажа (96x96)
-        int[] checkX = new int[]{(int)x / Level.TILE_SIZE, (int)(x + 96 - 1) / Level.TILE_SIZE};
-        int[] checkY = new int[]{(int)y / Level.TILE_SIZE, (int)(y + 96 - 1) / Level.TILE_SIZE};
+        float hitboxWidth = 24;
+        float hitboxHeight = 24;
+        float offsetX = (60 - hitboxWidth) / 2;
+        float offsetY = (60 - hitboxHeight) / 2;
+
+        float hitboxX = x + offsetX;
+        float hitboxY = y + offsetY;
+
+        int[] checkX = new int[]{(int)hitboxX / Level.TILE_SIZE, (int)(hitboxX + hitboxWidth - 1) / Level.TILE_SIZE};
+        int[] checkY = new int[]{(int)hitboxY / Level.TILE_SIZE, (int)(hitboxY + hitboxHeight - 1) / Level.TILE_SIZE};
 
         for (int cx : checkX) {
             for (int cy : checkY) {
-                if (cx < 0 || cx >= 20 || cy < 0 || cy >= 15 || levelMap[cx][cy] == 1) {
+                if (cx < 0 || cx >= levelMap.length || cy < 0 || cy >= levelMap[0].length || levelMap[cx][cy] == 1) {
                     return true;
                 }
             }
