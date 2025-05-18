@@ -11,6 +11,7 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.NinePatch;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
@@ -61,6 +62,17 @@ public class GameManager {
     private float attackCooldown = 0f;
     private final float ATTACK_COOLDOWN_DURATION = 0.5f;
 
+    // Хитбар
+    private Texture healthBarFrameTexture;
+    private Texture healthBarFillTexture;
+    private float frameWidth = 308f; // Широкая рамка
+    private float frameHeight = 96f;
+    private float fillWidth = 280f; // Полоска чуть уже
+    private float fillHeight = 20f;
+    private final float HEALTH_BAR_X = 10f; // Отступ слева (0f для нулевого)
+    private final float HEALTH_BAR_Y_OFFSET = 10f; // Отступ рамки сверху (0f для нулевого)
+    private float fillYOffset = -20f;
+
     public enum GameState { MENU, PLAYING, SETTINGS, DEATH }
     private GameState gameState;
     private GameState previousState;
@@ -71,10 +83,20 @@ public class GameManager {
         enemies = new ArrayList<>();
     }
 
+    public Player getPlayer() {
+        if (player == null) {
+            Gdx.app.error("GameManager", "Player is null in getPlayer!");
+        }
+        return player;
+    }
+
     public void initialize() {
         Gdx.app.log("GameManager", "Starting initialize");
         level = new Level();
         level.generateLevel();
+        enemies.addAll(level.getEnemies());
+        Gdx.app.log("GameManager", "Loaded " + enemies.size() + " enemies from Level");
+
         try {
             menuTexture = new Texture(Gdx.files.internal("menu_butt.png"));
             Gdx.app.log("GameManager", "menuTexture loaded");
@@ -88,8 +110,6 @@ public class GameManager {
 
         Item healingPotion = new Item("Healing Potion", "Restores 20 HP", Item.ItemType.POTION, 20, 0, 0, "healing_potion.png");
         player.getInventory().addItem(healingPotion);
-
-        spawnEnemies(3);
 
         renderer = new Renderer(batch, level, player, enemies);
 
@@ -356,6 +376,16 @@ public class GameManager {
         });
         settingsTable.add(backButton).colspan(5).pad(10);
 
+        // Загрузка текстур хитбара
+        try {
+            healthBarFrameTexture = new Texture(Gdx.files.internal("healthbar.png"));
+            healthBarFillTexture = new Texture(Gdx.files.internal("health.png"));
+            Gdx.app.log("GameManager", "Health bar textures loaded");
+        } catch (Exception e) {
+            Gdx.app.error("GameManager", "Failed to load health bar textures", e);
+            throw e;
+        }
+
         updateInventoryUI();
 
         Gdx.app.log("GameManager", "Initial soundEnabled: " + soundEnabled + ", volume: " + volume);
@@ -493,16 +523,8 @@ public class GameManager {
         inventoryTable.add(closeButton).colspan(3).pad(10);
     }
 
-    private void spawnEnemies(int count) {
-        Gdx.app.log("GameManager", "Spawning " + count + " enemies");
-        for (int i = 0; i < count; i++) {
-            Enemy enemy = new Enemy(level.getLevelMap(), level);
-            enemies.add(enemy);
-            Gdx.app.log("GameManager", "Enemy " + (i + 1) + " spawned at (" + enemy.getX() + "," + enemy.getY() + ")");
-        }
-    }
-
     public void update() {
+        Gdx.app.log("GameManager", "Updating, gameState: " + gameState + ", player HP: " + player.getHealth());
         if (gameState == GameState.PLAYING) {
             if (Gdx.input.isKeyJustPressed(Input.Keys.I)) {
                 inventoryVisible = !inventoryVisible;
@@ -520,9 +542,7 @@ public class GameManager {
             }
 
             if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
-                if (gameState != GameState.PLAYING) {
-                    Gdx.app.log("GameManager", "SPACE pressed but ignored (gameState=" + gameState + ")");
-                } else if (inventoryVisible) {
+                if (inventoryVisible) {
                     Gdx.app.log("GameManager", "SPACE pressed but ignored (inventoryVisible=true)");
                 } else if (attackCooldown > 0) {
                     Gdx.app.log("GameManager", "SPACE pressed but ignored (attackCooldown=" + attackCooldown + ")");
@@ -553,18 +573,25 @@ public class GameManager {
                 while (enemyIterator.hasNext()) {
                     Enemy enemy = enemyIterator.next();
                     enemy.update(player.getX(), player.getY(), player, delta);
-                    if (enemy.isDead()) {
+                    if (enemy.isDead() && enemy.getHealth() <= 0) {
                         List<Item> droppedItems = enemy.dropItems();
                         for (Item item : droppedItems) {
                             if (player.getInventory().addItem(item)) {
-                                if (item.getType() == Item.ItemType.WEAPON) {
-                                    player.equipWeapon(item);
-                                }
+                                Gdx.app.log("GameManager", "Dropped item " + item.getName() + " added to inventory");
+                            } else {
+                                Gdx.app.log("GameManager", "Inventory full, cannot add dropped item " + item.getName());
                             }
                         }
                         enemyIterator.remove();
                         enemy.dispose();
+                        Gdx.app.log("GameManager", "Enemy removed after death");
                     }
+                }
+
+                // Проверка смерти игрока
+                if (player.isDead()) {
+                    Gdx.app.log("GameManager", "Player is dead, calling setGameState(DEATH)");
+                    setGameState(GameState.DEATH);
                 }
 
                 camera.position.set(player.getX() + Level.TILE_SIZE / 2, player.getY() + Level.TILE_SIZE / 2, 0);
@@ -577,6 +604,17 @@ public class GameManager {
             menuStage.act(Gdx.graphics.getDeltaTime());
         } else if (gameState == GameState.SETTINGS) {
             settingsStage.act(Gdx.graphics.getDeltaTime());
+        } else if (gameState == GameState.DEATH) {
+            // Обработка состояния DEATH: ничего не обновляем, только ждём действий игрока
+            Gdx.app.log("GameManager", "In DEATH state, waiting for restart or exit");
+            // Можно добавить обработку клавиш, например, для рестарта
+            if (Gdx.input.isKeyJustPressed(Input.Keys.R)) {
+                Gdx.app.log("GameManager", "Restarting game from DEATH state");
+                restartGame();
+            } else if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+                Gdx.app.log("GameManager", "Exiting from DEATH state");
+                Gdx.app.exit();
+            }
         }
 
         if (currentMusicState != gameState) {
@@ -584,57 +622,149 @@ public class GameManager {
         }
     }
 
-    public Player getPlayer() {
-        return player;
+    private void restartGame() {
+        Gdx.app.log("GameManager", "Restarting game...");
+        try {
+            // Сбрасываем игрока
+            if (player != null) {
+                player.setHealth(player.getMaxHealth());
+                player.setStartPosition();
+                Gdx.app.log("GameManager", "Player reset: HP=" + player.getHealth() + ", Pos=(" + player.getX() + "," + player.getY() + ")");
+            } else {
+                Gdx.app.error("GameManager", "Player is null during restart!");
+                return;
+            }
+
+            // Очищаем врагов
+            for (Enemy enemy : enemies) {
+                if (enemy != null) {
+                    enemy.dispose();
+                }
+            }
+            enemies.clear();
+            Gdx.app.log("GameManager", "Enemies cleared");
+
+            // Генерируем новый уровень
+            if (level != null) {
+                level.dispose();
+            }
+            level = new Level();
+            level.generateLevel();
+            enemies.addAll(level.getEnemies());
+            Gdx.app.log("GameManager", "New level generated, enemies: " + enemies.size());
+
+            // Обновляем renderer
+            if (batch != null) {
+                renderer = new Renderer(batch, level, player, enemies);
+                Gdx.app.log("GameManager", "Renderer updated");
+            } else {
+                Gdx.app.error("GameManager", "SpriteBatch is null during restart!");
+                return;
+            }
+
+            // Сбрасываем инвентарь, если нужно (опционально)
+            inventoryVisible = false;
+            Gdx.input.setInputProcessor(null);
+
+            // Переключаем состояние
+            setGameState(GameState.PLAYING);
+            Gdx.app.log("GameManager", "Game restarted, state set to PLAYING");
+        } catch (Exception e) {
+            Gdx.app.error("GameManager", "Error during restartGame", e);
+        }
     }
 
     public void setGameState(GameState state) {
+        Gdx.app.log("GameManager", "Attempting to set gameState to: " + state + ", current: " + gameState);
         if (gameState != GameState.DEATH && state == GameState.DEATH) {
             previousState = gameState;
+            Gdx.app.log("GameManager", "Saved previousState: " + previousState);
         } else if (gameState == GameState.DEATH && state != GameState.DEATH) {
-            // После смерти возвращаем предыдущее состояние музыки
+            Gdx.app.log("GameManager", "Exiting DEATH state to: " + state);
             gameState = state;
             updateMusic();
             return;
         }
         gameState = state;
+        Gdx.app.log("GameManager", "gameState set to: " + gameState);
         updateMusic();
     }
 
-    public GameState getGameState() {
-        return gameState;
-    }
+        public GameState getGameState() {
+            return gameState;
+        }
 
     public void render() {
         if (gameState == GameState.MENU) {
             menuStage.draw();
         } else if (gameState == GameState.SETTINGS) {
             settingsStage.draw();
+        } else if (gameState == GameState.DEATH) {
+            batch.begin();
+            BitmapFont font = new BitmapFont();
+            font.setColor(Color.RED);
+            font.getData().setScale(2);
+            font.draw(batch, "Game Over! Press R to Restart, ESC to Exit",
+                Gdx.graphics.getWidth() / 2 - 200, Gdx.graphics.getHeight() / 2);
+            font.dispose();
+            batch.end();
         } else {
             renderer.render();
             if (inventoryVisible) {
                 inventoryStage.draw();
             }
+            if (gameState == GameState.PLAYING && player != null) {
+                // Рендер хитбара в экранных координатах
+                batch.begin();
+                // Устанавливаем проекцию для UI (экранные координаты)
+                batch.setProjectionMatrix(new Matrix4().setToOrtho2D(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight()));
+                // Вычисляем Y для рамки
+                float healthBarY = Gdx.graphics.getHeight() - frameHeight - HEALTH_BAR_Y_OFFSET;
+                // Отрисовка полоски здоровья
+                float healthRatio = (float) player.getHealth() / player.getMaxHealth();
+                float scaledFillWidth = fillWidth * healthRatio; // Масштабируем ширину полоски
+                // Полоска (центрируем по горизонтали, смещаем по Y)
+                float fillX = HEALTH_BAR_X + (frameWidth - fillWidth) / 2; // Центр по горизонтали
+                float baseFillY = healthBarY + (frameHeight - fillHeight) / 2; // Базовая позиция (центр рамки)
+                float effectiveFillYOffset = fillYOffset; // Проверяем, сохраняется ли минус
+                float fillY = baseFillY + effectiveFillYOffset; // Применяем смещение
+                batch.draw(healthBarFillTexture, fillX, fillY, scaledFillWidth, fillHeight);
+                // Рамка (фиксированная позиция)
+                batch.draw(healthBarFrameTexture, HEALTH_BAR_X, healthBarY, frameWidth, frameHeight);
+                // Отладочный текст: показываем координаты и смещение
+                BitmapFont font = new BitmapFont();
+                font.setColor(Color.WHITE);
+                font.getData().setScale(1);
+                font.draw(batch, "Frame Y: " + healthBarY + ", Fill Y: " + fillY + ", fillOffset: " + effectiveFillYOffset,
+                    HEALTH_BAR_X, healthBarY + frameHeight + 40);
+                font.draw(batch, "Frame: " + frameWidth + "x" + frameHeight + ", Fill: " + scaledFillWidth + "x" + fillHeight,
+                    HEALTH_BAR_X, healthBarY + frameHeight + 20);
+                font.dispose();
+                batch.end();
+                Gdx.app.log("GameManager", "Rendering health bar: frameY=" + healthBarY + ", fillY=" + fillY + ", effectiveFillOffset=" + effectiveFillYOffset);
+            }
         }
     }
 
-    public void dispose() {
-        batch.dispose();
-        player.dispose();
-        level.dispose();
-        for (Enemy enemy : enemies) {
-            enemy.dispose();
+        public void dispose() {
+            batch.dispose();
+            player.dispose();
+            level.dispose();
+            for (Enemy enemy : enemies) {
+                enemy.dispose();
+            }
+            menuStage.dispose();
+            inventoryStage.dispose();
+            settingsStage.dispose();
+            menuTexture.dispose();
+            soundTexture.dispose();
+            buttsTexture.dispose();
+            menuBackgroundTexture.dispose();
+            healthBarFrameTexture.dispose();
+            healthBarFillTexture.dispose();
+            if (menuMusic != null) menuMusic.dispose();
+            if (gameMusic != null) gameMusic.dispose();
+            if (deathMusic != null) deathMusic.dispose();
+            if (buttonClickSound != null) buttonClickSound.dispose();
         }
-        menuStage.dispose();
-        inventoryStage.dispose();
-        settingsStage.dispose();
-        menuTexture.dispose();
-        soundTexture.dispose();
-        buttsTexture.dispose();
-        menuBackgroundTexture.dispose();
-        if (menuMusic != null) menuMusic.dispose();
-        if (gameMusic != null) gameMusic.dispose();
-        if (deathMusic != null) deathMusic.dispose();
-        if (buttonClickSound != null) buttonClickSound.dispose();
     }
-}

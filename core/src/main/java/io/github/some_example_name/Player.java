@@ -3,6 +3,7 @@ package io.github.some_example_name;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 
 public class Player {
@@ -12,12 +13,12 @@ public class Player {
     private Texture playerSheet;
     private Texture playerAttackSheet;
     private TextureRegion[] walkLeft, walkRight, walkUp, walkDown;
-    private TextureRegion[] attackRight, attackLeft, attackUp, attackDown; // Массивы для атаки
+    private TextureRegion[] attackRight, attackLeft, attackUp, attackDown;
     private float animationTime;
     private int currentFrame;
     private boolean isAttacking;
     private float attackAnimationTimer;
-    private final float ATTACK_ANIMATION_DURATION = 0.6f; // Для 6 кадров при 10 кадрах/с
+    private final float ATTACK_ANIMATION_DURATION = 0.6f;
     private int[][] levelMap;
     private Level level;
 
@@ -33,17 +34,16 @@ public class Player {
     private float speedEffectTimer;
     private float speedEffectMultiplier;
 
-    // Направления и текущая ориентация игрока
     public enum Direction {
         RIGHT, LEFT, UP, DOWN
     }
-    private Direction currentDirection = Direction.DOWN; // По умолчанию вниз
-    private static final int WALK_FRAME_WIDTH = 48; // Размер для ходьбы
+    private Direction currentDirection = Direction.DOWN;
+    private static final int WALK_FRAME_WIDTH = 48;
     private static final int WALK_FRAME_HEIGHT = 64;
-    private static final int ATTACK_FRAME_WIDTH = 48; // Размер для атаки
+    private static final int ATTACK_FRAME_WIDTH = 48;
     private static final int ATTACK_FRAME_HEIGHT = 64;
-    private static final int FRAMES_PER_WALK = 4; // Кадров для ходьбы
-    private static final int FRAMES_PER_ATTACK = 8; // Кадров для атаки
+    private static final int FRAMES_PER_WALK = 4;
+    private static final int FRAMES_PER_ATTACK = 8;
 
     public Player(int[][] levelMap, Level level) {
         this.levelMap = levelMap;
@@ -61,18 +61,15 @@ public class Player {
         isAttacking = false;
         attackAnimationTimer = 0f;
 
-        // Инициализация анимаций ходьбы
         walkRight = new TextureRegion[FRAMES_PER_WALK];
         walkLeft = new TextureRegion[FRAMES_PER_WALK];
         walkUp = new TextureRegion[FRAMES_PER_WALK];
         walkDown = new TextureRegion[FRAMES_PER_WALK];
-        // Инициализация анимаций атаки
         attackRight = new TextureRegion[FRAMES_PER_ATTACK];
         attackLeft = new TextureRegion[FRAMES_PER_ATTACK];
         attackUp = new TextureRegion[FRAMES_PER_ATTACK];
         attackDown = new TextureRegion[FRAMES_PER_ATTACK];
 
-        // Загружаем анимации ходьбы
         for (int i = 0; i < FRAMES_PER_WALK; i++) {
             walkRight[i] = new TextureRegion(playerSheet, i * WALK_FRAME_WIDTH, 211, WALK_FRAME_WIDTH, WALK_FRAME_HEIGHT);
             walkUp[i] = new TextureRegion(playerSheet, i * WALK_FRAME_WIDTH, 150, WALK_FRAME_WIDTH, WALK_FRAME_HEIGHT);
@@ -80,7 +77,6 @@ public class Player {
             walkDown[i] = new TextureRegion(playerSheet, i * WALK_FRAME_WIDTH, 26, WALK_FRAME_WIDTH, WALK_FRAME_HEIGHT);
         }
 
-        // Загружаем анимации атаки с явными координатами
         loadAttackAnimations();
 
         inventory = new Inventory();
@@ -95,14 +91,12 @@ public class Player {
     }
 
     private void loadAttackAnimations() {
-        // Проверяем размер текстуры
         int sheetWidth = playerAttackSheet.getWidth();
         int sheetHeight = playerAttackSheet.getHeight();
         if (sheetWidth < ATTACK_FRAME_WIDTH * FRAMES_PER_ATTACK || sheetHeight < ATTACK_FRAME_HEIGHT * 4) {
             Gdx.app.error("Player", "player_attack.png must be at least " +
                 (ATTACK_FRAME_WIDTH * FRAMES_PER_ATTACK) + "x" + (ATTACK_FRAME_HEIGHT * 4) +
                 ", but is " + sheetWidth + "x" + sheetHeight);
-            // Заглушка: используем walkDown, если текстура неправильная
             for (int i = 0; i < FRAMES_PER_ATTACK; i++) {
                 attackRight[i] = walkDown[i % FRAMES_PER_WALK];
                 attackLeft[i] = walkDown[i % FRAMES_PER_WALK];
@@ -112,46 +106,41 @@ public class Player {
             return;
         }
 
-        // Явное задание координат для каждого кадра
-        // Направление RIGHT (ряд 0)
-        attackRight[0] = new TextureRegion(playerAttackSheet, 24, 145, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT); // x=0, y=0
-        attackRight[1] = new TextureRegion(playerAttackSheet, 89, 145, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT); // x=35, y=0
-        attackRight[2] = new TextureRegion(playerAttackSheet, 153, 145, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT); // x=70, y=0
-        attackRight[3] = new TextureRegion(playerAttackSheet, 218, 145, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT); // x=105, y=0
-        attackRight[4] = new TextureRegion(playerAttackSheet, 278, 145, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT); // x=140, y=0
+        attackRight[0] = new TextureRegion(playerAttackSheet, 24, 145, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT);
+        attackRight[1] = new TextureRegion(playerAttackSheet, 89, 145, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT);
+        attackRight[2] = new TextureRegion(playerAttackSheet, 153, 145, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT);
+        attackRight[3] = new TextureRegion(playerAttackSheet, 218, 145, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT);
+        attackRight[4] = new TextureRegion(playerAttackSheet, 278, 145, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT);
         attackRight[5] = new TextureRegion(playerAttackSheet, 344, 145, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT);
         attackRight[6] = new TextureRegion(playerAttackSheet, 409, 145, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT);
         attackRight[7] = new TextureRegion(playerAttackSheet, 474, 145, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT);
 
-        // Направление LEFT (ряд 1)
-        attackLeft[0] = new TextureRegion(playerAttackSheet, 24, 81, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT); // x=0, y=51
-        attackLeft[1] = new TextureRegion(playerAttackSheet, 89, 81, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT); // x=35, y=51
-        attackLeft[2] = new TextureRegion(playerAttackSheet, 153, 81, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT); // x=70, y=51
-        attackLeft[3] = new TextureRegion(playerAttackSheet, 218, 81, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT); // x=105, y=51
-        attackLeft[4] = new TextureRegion(playerAttackSheet, 278, 81, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT); // x=140, y=51
-        attackLeft[5] = new TextureRegion(playerAttackSheet, 344, 81, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT); // x=175, y=51
-        attackLeft[6] = new TextureRegion(playerAttackSheet, 409, 81, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT); // x=175, y=51
-        attackLeft[7] = new TextureRegion(playerAttackSheet, 474, 81, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT); // x=175, y=51
+        attackLeft[0] = new TextureRegion(playerAttackSheet, 24, 81, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT);
+        attackLeft[1] = new TextureRegion(playerAttackSheet, 89, 81, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT);
+        attackLeft[2] = new TextureRegion(playerAttackSheet, 153, 81, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT);
+        attackLeft[3] = new TextureRegion(playerAttackSheet, 218, 81, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT);
+        attackLeft[4] = new TextureRegion(playerAttackSheet, 278, 81, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT);
+        attackLeft[5] = new TextureRegion(playerAttackSheet, 344, 81, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT);
+        attackLeft[6] = new TextureRegion(playerAttackSheet, 409, 81, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT);
+        attackLeft[7] = new TextureRegion(playerAttackSheet, 474, 81, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT);
 
-        // Направление UP (ряд 2)
-        attackUp[0] = new TextureRegion(playerAttackSheet, 24, 208, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT); // x=0, y=102
-        attackUp[1] = new TextureRegion(playerAttackSheet, 89, 208, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT); // x=35, y=102
-        attackUp[2] = new TextureRegion(playerAttackSheet, 153, 208, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT); // x=70, y=102
-        attackUp[3] = new TextureRegion(playerAttackSheet, 218, 208, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT); // x=105, y=102
-        attackUp[4] = new TextureRegion(playerAttackSheet, 278, 208, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT); // x=140, y=102
-        attackUp[5] = new TextureRegion(playerAttackSheet, 344, 208, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT); // x=175, y=102
-        attackUp[6] = new TextureRegion(playerAttackSheet, 409, 208, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT); // x=175, y=102
-        attackUp[7] = new TextureRegion(playerAttackSheet, 474, 208, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT); // x=175, y=102
+        attackUp[0] = new TextureRegion(playerAttackSheet, 24, 208, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT);
+        attackUp[1] = new TextureRegion(playerAttackSheet, 89, 208, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT);
+        attackUp[2] = new TextureRegion(playerAttackSheet, 153, 208, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT);
+        attackUp[3] = new TextureRegion(playerAttackSheet, 218, 208, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT);
+        attackUp[4] = new TextureRegion(playerAttackSheet, 278, 208, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT);
+        attackUp[5] = new TextureRegion(playerAttackSheet, 344, 208, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT);
+        attackUp[6] = new TextureRegion(playerAttackSheet, 409, 208, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT);
+        attackUp[7] = new TextureRegion(playerAttackSheet, 474, 208, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT);
 
-        // Направление DOWN (ряд 3)
-        attackDown[0] = new TextureRegion(playerAttackSheet, 24, 26, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT); // x=0, y=153
-        attackDown[1] = new TextureRegion(playerAttackSheet, 89, 26, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT); // x=35, y=153
-        attackDown[2] = new TextureRegion(playerAttackSheet, 153, 26, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT); // x=70, y=153
-        attackDown[3] = new TextureRegion(playerAttackSheet, 218, 26, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT); // x=105, y=153
-        attackDown[4] = new TextureRegion(playerAttackSheet, 278, 26, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT); // x=140, y=153
-        attackDown[5] = new TextureRegion(playerAttackSheet, 344, 26, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT); // x=175, y=153
-        attackDown[6] = new TextureRegion(playerAttackSheet, 409, 26, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT); // x=175, y=153
-        attackDown[7] = new TextureRegion(playerAttackSheet, 474, 26, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT); // x=175, y=153
+        attackDown[0] = new TextureRegion(playerAttackSheet, 24, 26, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT);
+        attackDown[1] = new TextureRegion(playerAttackSheet, 89, 26, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT);
+        attackDown[2] = new TextureRegion(playerAttackSheet, 153, 26, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT);
+        attackDown[3] = new TextureRegion(playerAttackSheet, 218, 26, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT);
+        attackDown[4] = new TextureRegion(playerAttackSheet, 278, 26, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT);
+        attackDown[5] = new TextureRegion(playerAttackSheet, 344, 26, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT);
+        attackDown[6] = new TextureRegion(playerAttackSheet, 409, 26, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT);
+        attackDown[7] = new TextureRegion(playerAttackSheet, 474, 26, ATTACK_FRAME_WIDTH, ATTACK_FRAME_HEIGHT);
 
         Gdx.app.log("Player", "Loaded attack animations with explicit coordinates");
     }
@@ -233,7 +222,6 @@ public class Player {
     }
 
     private void updateAnimation() {
-        // Общий таймер анимации
         if (isMoving() || isAttacking) {
             animationTime += Gdx.graphics.getDeltaTime();
         }
@@ -242,7 +230,6 @@ public class Player {
         int frameCount;
 
         if (isAttacking) {
-            // Выбираем кадры атаки
             currentAnimation = switch (currentDirection) {
                 case RIGHT -> attackRight;
                 case LEFT -> attackLeft;
@@ -251,7 +238,6 @@ public class Player {
             };
             frameCount = FRAMES_PER_ATTACK;
 
-            // Проверяем длительность атаки
             attackAnimationTimer -= Gdx.graphics.getDeltaTime();
             if (attackAnimationTimer <= 0) {
                 isAttacking = false;
@@ -259,7 +245,6 @@ public class Player {
                 Gdx.app.log("Player", "Attack animation ended");
             }
         } else {
-            // Выбираем кадры ходьбы
             currentAnimation = walkDown;
             if (Gdx.input.isKeyPressed(Input.Keys.A)) currentAnimation = walkLeft;
             else if (Gdx.input.isKeyPressed(Input.Keys.D)) currentAnimation = walkRight;
@@ -268,11 +253,10 @@ public class Player {
             frameCount = FRAMES_PER_WALK;
         }
 
-        // Единая логика переключения кадров
         if (isMoving() || isAttacking) {
-            currentFrame = (int)(animationTime * 10) % frameCount; // 10 кадров/с
+            currentFrame = (int)(animationTime * 10) % frameCount;
         } else {
-            currentFrame = 2; // Покой
+            currentFrame = 2;
         }
         Gdx.app.log("Player", "Animation: isAttacking=" + isAttacking + ", Frame=" + currentFrame + ", Direction=" + currentDirection);
     }
@@ -365,7 +349,6 @@ public class Player {
         return health <= 0;
     }
 
-
     public int getHealth() { return health; }
     public int getMaxHealth() { return maxHealth; }
     public int getDamage() { return damage; }
@@ -380,6 +363,7 @@ public class Player {
 
     public float getX() { return x; }
     public float getY() { return y; }
+
     public TextureRegion getCurrentFrame() {
         if (isAttacking) {
             return switch (currentDirection) {
@@ -394,6 +378,12 @@ public class Player {
         if (Gdx.input.isKeyPressed(Input.Keys.W)) return walkUp[currentFrame];
         if (Gdx.input.isKeyPressed(Input.Keys.S)) return walkDown[currentFrame];
         return walkDown[currentFrame];
+    }
+
+    public void render(SpriteBatch batch) {
+        TextureRegion currentFrame = getCurrentFrame();
+        batch.draw(currentFrame, x, y, 48, 64); // Отрисовка с размерами 48x64
+        Gdx.app.log("Player", "Rendering frame: x=" + x + ", y=" + y + ", health=" + health);
     }
 
     public void dispose() {
