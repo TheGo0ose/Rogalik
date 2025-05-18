@@ -42,6 +42,7 @@ public class GameManager {
 
     private Music menuMusic;
     private Music gameMusic;
+    private Music deathMusic;
     private Sound buttonClickSound;
     private GameState currentMusicState;
 
@@ -60,8 +61,9 @@ public class GameManager {
     private float attackCooldown = 0f;
     private final float ATTACK_COOLDOWN_DURATION = 0.5f;
 
-    private enum GameState { MENU, PLAYING, SETTINGS }
+    public enum GameState { MENU, PLAYING, SETTINGS, DEATH }
     private GameState gameState;
+    private GameState previousState;
 
     public GameManager(OrthographicCamera camera) {
         this.camera = camera;
@@ -106,6 +108,13 @@ public class GameManager {
             throw e;
         }
         try {
+            deathMusic = Gdx.audio.newMusic(Gdx.files.internal("death_music.wav"));
+            Gdx.app.log("GameManager", "deathMusic loaded");
+        } catch (Exception e) {
+            Gdx.app.error("GameManager", "Failed to load death_music.wav", e);
+            throw e;
+        }
+        try {
             buttonClickSound = Gdx.audio.newSound(Gdx.files.internal("button_click.wav"));
             Gdx.app.log("GameManager", "buttonClickSound loaded");
         } catch (Exception e) {
@@ -114,9 +123,11 @@ public class GameManager {
         }
         menuMusic.setLooping(true);
         gameMusic.setLooping(true);
+        deathMusic.setLooping(false);
 
         gameState = GameState.MENU;
         currentMusicState = null;
+        previousState = GameState.MENU;
         menuStage = new Stage(new ScreenViewport());
         Gdx.input.setInputProcessor(menuStage);
 
@@ -357,10 +368,12 @@ public class GameManager {
         if (soundEnabled) {
             menuMusic.setVolume(volume);
             gameMusic.setVolume(volume);
+            deathMusic.setVolume(volume);
             Gdx.app.log("GameManager", "Volume updated to: " + volume);
         } else {
             menuMusic.setVolume(0);
             gameMusic.setVolume(0);
+            deathMusic.setVolume(0);
             Gdx.app.log("GameManager", "Sound disabled, volume set to 0");
         }
         updateMusic();
@@ -369,12 +382,13 @@ public class GameManager {
     private void updateMusic() {
         Gdx.app.log("GameManager", "Updating music, gameState: " + gameState + ", soundEnabled: " + soundEnabled);
 
-        if (currentMusicState == gameState && (menuMusic.isPlaying() || gameMusic.isPlaying())) {
+        if (currentMusicState == gameState && (menuMusic.isPlaying() || gameMusic.isPlaying() || deathMusic.isPlaying())) {
             return;
         }
 
         menuMusic.stop();
         gameMusic.stop();
+        deathMusic.stop();
 
         if (soundEnabled) {
             if (gameState == GameState.MENU || gameState == GameState.SETTINGS) {
@@ -388,6 +402,12 @@ public class GameManager {
                     Gdx.app.log("GameManager", "Playing gameMusic, volume: " + volume);
                     gameMusic.setVolume(volume);
                     gameMusic.play();
+                }
+            } else if (gameState == GameState.DEATH) {
+                if (!deathMusic.isPlaying()) {
+                    Gdx.app.log("GameManager", "Playing deathMusic, volume: " + volume);
+                    deathMusic.setVolume(volume);
+                    deathMusic.play();
                 }
             }
         }
@@ -517,7 +537,7 @@ public class GameManager {
                             enemy.takeDamage(playerDamage);
                             attackCooldown = ATTACK_COOLDOWN_DURATION;
                             Gdx.app.log("GameManager", "Player hit enemy at (" + enemy.getX() + "," + enemy.getY() + "). " +
-                                    "Dealt=" + playerDamage + ", Enemy HP=" + enemy.getHealth());
+                                "Dealt=" + playerDamage + ", Enemy HP=" + enemy.getHealth());
                             break;
                         } else {
                             Gdx.app.log("GameManager", "No collision with enemy at (" + enemy.getX() + "," + enemy.getY() + ")");
@@ -547,17 +567,6 @@ public class GameManager {
                     }
                 }
 
-                if (player.getHealth() <= 0) {
-                    Gdx.app.log("GameManager", "Player died! Returning to menu.");
-                    gameState = GameState.MENU;
-                    Gdx.input.setInputProcessor(menuStage);
-                    player = new Player(level.getLevelMap(), level);
-                    player.setStartPosition();
-                    enemies.clear();
-                    spawnEnemies(3);
-                    updateInventoryUI();
-                }
-
                 camera.position.set(player.getX() + Level.TILE_SIZE / 2, player.getY() + Level.TILE_SIZE / 2, 0);
                 camera.update();
                 batch.setProjectionMatrix(camera.combined);
@@ -573,6 +582,27 @@ public class GameManager {
         if (currentMusicState != gameState) {
             updateMusic();
         }
+    }
+
+    public Player getPlayer() {
+        return player;
+    }
+
+    public void setGameState(GameState state) {
+        if (gameState != GameState.DEATH && state == GameState.DEATH) {
+            previousState = gameState;
+        } else if (gameState == GameState.DEATH && state != GameState.DEATH) {
+            // После смерти возвращаем предыдущее состояние музыки
+            gameState = state;
+            updateMusic();
+            return;
+        }
+        gameState = state;
+        updateMusic();
+    }
+
+    public GameState getGameState() {
+        return gameState;
     }
 
     public void render() {
@@ -604,6 +634,7 @@ public class GameManager {
         menuBackgroundTexture.dispose();
         if (menuMusic != null) menuMusic.dispose();
         if (gameMusic != null) gameMusic.dispose();
+        if (deathMusic != null) deathMusic.dispose();
         if (buttonClickSound != null) buttonClickSound.dispose();
     }
 }

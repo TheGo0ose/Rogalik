@@ -361,6 +361,11 @@ public class Player {
         }
     }
 
+    public boolean isDead() {
+        return health <= 0;
+    }
+
+
     public int getHealth() { return health; }
     public int getMaxHealth() { return maxHealth; }
     public int getDamage() { return damage; }
