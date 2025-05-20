@@ -12,7 +12,7 @@ import java.util.Random;
 public class Enemy {
     private float x, y;
     private int[][] levelMap;
-    private int health = 50;
+    private int health = 20;
     private boolean isDead = false;
     private Texture enemyWalkSheet;
     private Texture enemyAttackSheet;
@@ -34,10 +34,10 @@ public class Enemy {
     private final float ATTACK_ANIMATION_DURATION = 0.4f;
     private final float DAMAGE_ANIMATION_DURATION = 0.3f;
     private final float DEATH_ANIMATION_DURATION = 0.5f;
-    private int damage = 2;
+    private int damage = 1;
     private Level level;
     private Room assignedRoom;
-    private float speed = 100f;
+    private float speed = 50f;
     private Direction currentDirection = Direction.DOWN;
 
     public enum Direction {
