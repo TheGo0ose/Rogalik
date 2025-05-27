@@ -77,10 +77,11 @@ public class GameManager {
     // Константы для расположения слотов инвентаря
     private static final int SLOTS_PER_ROW = 4;
     private static final int SLOTS_PER_COLUMN = 3;
-    private static final float SLOT_SIZE = 64f; // Увеличиваем размер слота под новый масштаб
-    private static final float INVENTORY_X = 100f; // Сдвигаем ближе к левому краю
-    private static final float INVENTORY_Y = 50f; // Сдвигаем ниже
-    private static final float INVENTORY_SCALE = 1.5f; // Масштаб инвентаря
+    private static final float SLOT_SIZE = 40f; // Размер ячейки в текстуре (без масштаба)
+    private static final float SLOT_PADDING = 10f; // Отступ между ячейками в текстуре
+    private static final float INVENTORY_X = 200f;
+    private static final float INVENTORY_Y = 200f;
+    private static final float INVENTORY_SCALE = 2; // Масштаб инвентаря
 
     public enum GameState { MENU, PLAYING, SETTINGS, DEATH }
     private GameState gameState;
@@ -500,12 +501,15 @@ public class GameManager {
                     ImageButton.ImageButtonStyle itemButtonStyle = new ImageButton.ImageButtonStyle();
                     itemButtonStyle.up = new NinePatchDrawable(new NinePatch(itemRegion, 5, 5, 5, 5));
                     ImageButton itemButton = new ImageButton(itemButtonStyle);
-                    // Учитываем масштаб инвентаря при позиционировании
-                    itemButton.setPosition(
-                        INVENTORY_X + j * SLOT_SIZE * INVENTORY_SCALE + 10 * INVENTORY_SCALE,
-                        INVENTORY_Y + (SLOTS_PER_COLUMN - 1 - i) * SLOT_SIZE * INVENTORY_SCALE + 10 * INVENTORY_SCALE
-                    );
-                    itemButton.setSize(SLOT_SIZE * INVENTORY_SCALE, SLOT_SIZE * INVENTORY_SCALE); // Увеличиваем размер кнопки
+
+                    // Рассчитываем позицию ячейки на текстуре с учётом масштаба
+                    float slotX = INVENTORY_X + j * (SLOT_SIZE + SLOT_PADDING) * INVENTORY_SCALE;
+                    float slotY = INVENTORY_Y + (SLOTS_PER_COLUMN - 1 - i) * (SLOT_SIZE + SLOT_PADDING) * INVENTORY_SCALE;
+
+                    // Устанавливаем позицию и размер кнопки
+                    itemButton.setPosition(slotX, slotY);
+                    itemButton.setSize(SLOT_SIZE * INVENTORY_SCALE, SLOT_SIZE * INVENTORY_SCALE); // Масштабируем размер кнопки
+
                     int finalJ = j;
                     int finalI = i;
                     itemButton.addListener(new ClickListener() {

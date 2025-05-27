@@ -327,11 +327,11 @@ public class Enemy {
     public List<Item> dropItems() {
         List<Item> droppedItems = new ArrayList<>();
         Random random = new Random();
-        if (random.nextFloat() < 0.1f) {
+        if (random.nextFloat() < 0.05f) {
             droppedItems.add(new Item("Редкий меч", "Прочный и острый", Item.ItemType.WEAPON, 10, 0, 0, "rare_sword.png"));
         }
-        if (random.nextFloat() < 0.05f) {
-            droppedItems.add(new Item("Мифический меч", "Пылающий клинок", Item.ItemType.WEAPON, 15, 1.5f, 10, "myth_sword.png"));
+        if (random.nextFloat() < 0.01f) {
+            droppedItems.add(new Item("Мифический меч", "Ускоряющий меч", Item.ItemType.WEAPON, 15, 1.5f, 10000, "myth_sword.png"));
         }
         return droppedItems;
     }
