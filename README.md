@@ -10,7 +10,11 @@
 ./gradlew lwjgl3:run      # запустить игру
 ./gradlew core:test       # тесты логики
 ./gradlew lwjgl3:jar      # собрать запускаемый jar в lwjgl3/build/libs
+./gradlew lwjgl3:exeToRoot  # собрать Rogalik.exe (со встроенной Java) прямо в корень проекта
 ```
+
+`Rogalik.exe` запускается только вместе с лежащими рядом `runtime/`, `app/` и `Rogalik-*.jar`.
+Чтобы передать игру, отправьте zip из `lwjgl3/build/construo/dist/`.
 
 Если по умолчанию стоит другая версия Java, укажите нужную: `JAVA_HOME=путь/к/jdk-23 ./gradlew lwjgl3:run`.
 

@@ -135,3 +135,27 @@ startScripts.classpath = project.tasks.jar.outputs.files
 if(enableGraalNative == 'true') {
   apply from: file("nativeimage.gradle")
 }
+
+// Собирает Windows-версию и кладёт её прямо в корень проекта:
+// Rogalik.exe + runtime/ (встроенная Java) + app/ (настройки запуска) + jar с игрой.
+// Запуск: gradlew lwjgl3:exeToRoot
+tasks.register('exeToRoot') {
+  group = 'construo'
+  description = 'Builds the Windows exe and unpacks it into the project root.'
+  dependsOn 'packageWinX64'
+  doLast {
+    def zip = layout.buildDirectory.file("construo/dist/${appName}-winX64.zip").get().asFile
+    def root = rootProject.projectDir
+    // убираем прошлую сборку, чтобы не оставались старые файлы
+    project.delete(new File(root, 'runtime'), new File(root, 'app'), new File(root, "${appName}.exe"))
+    project.delete(project.fileTree(root) { include "${appName}-*.jar" })
+    project.copy {
+      from zipTree(zip)
+      into root
+      // в архиве всё лежит в папке Rogalik-<версия>-winX64 — снимаем её
+      eachFile { it.relativePath = new RelativePath(true, it.relativePath.segments.drop(1) as String[]) }
+      includeEmptyDirs = false
+    }
+    println "Готово: ${new File(root, "${appName}.exe")}"
+  }
+}
