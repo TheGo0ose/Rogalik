@@ -1,88 +1,81 @@
 package io.github.some_example_name;
 
-import com.badlogic.gdx.ApplicationAdapter;
-import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.OrthographicCamera;
-import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.Game;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import io.github.some_example_name.GameManager.GameState; // Добавляем импорт
+import io.github.some_example_name.audio.AudioManager;
+import io.github.some_example_name.render.Sprites;
+import io.github.some_example_name.screen.DeathScreen;
+import io.github.some_example_name.screen.GameScreen;
+import io.github.some_example_name.screen.MenuScreen;
+import io.github.some_example_name.screen.SettingsScreen;
+import io.github.some_example_name.ui.UiStyles;
 
-public class MainGame extends ApplicationAdapter {
-    private GameManager gameManager;
-    private OrthographicCamera camera;
-    private boolean isPlayerDead = false;
-    private float deathAlpha = 0f;
-    private final float fadeSpeed = 0.5f;
-    private Texture deathImage;
+/**
+ * Точка входа. Владеет общими ресурсами (SpriteBatch, ассеты, звук, шрифты)
+ * и переключает экраны. Сама ничего не рисует и не обновляет.
+ */
+public class MainGame extends Game {
     private SpriteBatch batch;
-    private float deathTimer = 0f;
-    private final float DEATH_DELAY = 5f; // Задержка перед перезапуском (2 секунды)
+    private Assets assets;
+    private AudioManager audio;
+    private UiStyles ui;
+    private Sprites sprites;
+
+    private MenuScreen menuScreen;
+    private SettingsScreen settingsScreen;
+    private DeathScreen deathScreen;
+    private GameScreen gameScreen;
 
     @Override
     public void create() {
-        camera = new OrthographicCamera();
-        camera.setToOrtho(false, 800, 600);
-        camera.update();
-
-        gameManager = new GameManager(camera);
-        gameManager.initialize();
-
         batch = new SpriteBatch();
-        deathImage = new Texture("death_image.png"); // Убедись, что файл в assets
+        assets = new Assets();
+        assets.loadAll();
+        audio = new AudioManager(assets);
+        ui = new UiStyles();
+        sprites = new Sprites(assets);
+
+        menuScreen = new MenuScreen(this);
+        settingsScreen = new SettingsScreen(this);
+        deathScreen = new DeathScreen(this);
+        showMenu();
     }
 
-    @Override
-    public void render() {
-        Gdx.gl.glClearColor(0, 0, 0, 1);
-        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
-
-        if (isPlayerDead) {
-            gameManager.setGameState(GameState.DEATH); // Теперь используем просто GameState.DEATH
-            renderDeathScreen(Gdx.graphics.getDeltaTime());
-            deathTimer += Gdx.graphics.getDeltaTime();
-            if (deathTimer >= DEATH_DELAY) {
-                resetGame();
-            }
-        } else {
-            gameManager.update();
-
-            if (gameManager.getPlayer().isDead()) {
-                isPlayerDead = true;
-                return;
-            }
-
-            gameManager.render();
-        }
+    public void showMenu() {
+        setScreen(menuScreen);
     }
 
-    private void renderDeathScreen(float delta) {
-        if (deathAlpha < 1f) {
-            deathAlpha += fadeSpeed * delta;
-            if (deathAlpha > 1f) deathAlpha = 1f;
-        }
-
-        batch.begin();
-        batch.setColor(1, 1, 1, deathAlpha);
-        batch.draw(deathImage, 0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-        batch.setColor(1, 1, 1, 1); // Сброс цвета
-        batch.end();
+    public void showSettings() {
+        setScreen(settingsScreen);
     }
 
-    private void resetGame() {
-        isPlayerDead = false;
-        deathAlpha = 0f;
-        deathTimer = 0f;
-        gameManager.dispose(); // Очищаем старые ресурсы
-        gameManager = new GameManager(camera);
-        gameManager.initialize(); // Перезапуск игры
-        gameManager.setGameState(GameState.MENU); // Возвращаемся в меню
+    public void showDeath() {
+        setScreen(deathScreen);
     }
+
+    /** Новый забег: новый уровень и новый игрок. Старый экран игры освобождается. */
+    public void startNewGame() {
+        GameScreen previous = gameScreen;
+        gameScreen = new GameScreen(this);
+        setScreen(gameScreen);
+        if (previous != null) previous.dispose();
+    }
+
+    public SpriteBatch getBatch() { return batch; }
+    public Assets getAssets() { return assets; }
+    public AudioManager getAudio() { return audio; }
+    public UiStyles getUi() { return ui; }
+    public Sprites getSprites() { return sprites; }
 
     @Override
     public void dispose() {
-        gameManager.dispose();
+        super.dispose();
+        menuScreen.dispose();
+        settingsScreen.dispose();
+        deathScreen.dispose();
+        if (gameScreen != null) gameScreen.dispose();
+        ui.dispose();
+        assets.dispose();
         batch.dispose();
-        deathImage.dispose();
     }
 }

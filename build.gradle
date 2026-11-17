@@ -29,11 +29,6 @@ allprojects {
 
 project(":core") {
   apply plugin: "java-library"
-
-  dependencies {
-    implementation "com.badlogicgames.gdx:gdx:$gdxVersion"
-    implementation "com.badlogicgames.gdx:gdx-tools:$gdxVersion"
-  }
 }
 
 
@@ -69,7 +64,7 @@ configure(subprojects) {
 
 subprojects {
   version = "$projectVersion"
-  ext.appName = 'Class'
+  ext.appName = 'Rogalik'
   repositories {
     mavenCentral()
     maven { url 'https://s01.oss.sonatype.org' }
@@ -81,4 +76,4 @@ subprojects {
   }
 }
 
-eclipse.project.name = 'Class' + '-parent'
+eclipse.project.name = 'Rogalik' + '-parent'

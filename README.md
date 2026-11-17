@@ -1,33 +1,54 @@
-# Class
+# Rogalik
 
-A [libGDX](https://libgdx.com/) project generated with [gdx-liftoff](https://github.com/libgdx/gdx-liftoff).
+Пиксельный рогалик на [libGDX](https://libgdx.com/): процедурное подземелье, слизни, инвентарь и экипировка.
 
-This project was generated with a template including simple application launchers and an `ApplicationAdapter` extension that draws libGDX logo.
+## Запуск
 
-## Platforms
+Нужен JDK 23 (проект собирается с `release 23`).
 
-- `core`: Main module with the application logic shared by all platforms.
-- `lwjgl3`: Primary desktop platform using LWJGL3; was called 'desktop' in older docs.
+```bash
+./gradlew lwjgl3:run      # запустить игру
+./gradlew core:test       # тесты логики
+./gradlew lwjgl3:jar      # собрать запускаемый jar в lwjgl3/build/libs
+```
 
-## Gradle
+Если по умолчанию стоит другая версия Java, укажите нужную: `JAVA_HOME=путь/к/jdk-23 ./gradlew lwjgl3:run`.
 
-This project uses [Gradle](https://gradle.org/) to manage dependencies.
-The Gradle wrapper was included, so you can run Gradle tasks using `gradlew.bat` or `./gradlew` commands.
-Useful Gradle tasks and flags:
+## Управление
 
-- `--continue`: when using this flag, errors will not stop the tasks from running.
-- `--daemon`: thanks to this flag, Gradle daemon will be used to run chosen tasks.
-- `--offline`: when using this flag, cached dependency archives will be used.
-- `--refresh-dependencies`: this flag forces validation of all dependencies. Useful for snapshot versions.
-- `build`: builds sources and archives of every project.
-- `cleanEclipse`: removes Eclipse project data.
-- `cleanIdea`: removes IntelliJ project data.
-- `clean`: removes `build` folders, which store compiled classes and built archives.
-- `eclipse`: generates Eclipse project data.
-- `idea`: generates IntelliJ project data.
-- `lwjgl3:jar`: builds application's runnable jar, which can be found at `lwjgl3/build/libs`.
-- `lwjgl3:run`: starts the application.
-- `test`: runs unit tests (if any).
+| Клавиша | Действие |
+|---|---|
+| WASD / стрелки | ходьба |
+| Пробел | удар мечом |
+| I | инвентарь (ЛКМ по предмету — использовать/надеть, по слоту экипировки — снять) |
+| Esc | пауза (M — выйти в меню) |
+| R / Esc на экране смерти | новая игра / меню |
 
-Note that most tasks that are not specific to a single project can be run with `name:` prefix, where the `name` should be replaced with the ID of a specific project.
-For example, `core:clean` removes `build` folder only from the `core` project.
+## Архитектура
+
+Логика игры отделена от графики, звука и ввода: классы из `world`, `entity` и `item`
+не используют текстуры и `Gdx.input`, поэтому покрыты обычными JUnit-тестами.
+
+```
+core/src/main/java/io/github/some_example_name/
+├── MainGame.java          точка входа: владеет общими ресурсами и переключает экраны
+├── Assets.java            загрузка всех текстур/звуков через AssetManager (каждая — один раз)
+├── audio/AudioManager     музыка, клики, громкость (сохраняется между запусками)
+├── screen/                MenuScreen, SettingsScreen, GameScreen, DeathScreen
+├── world/                 Level (клетки и комнаты), LevelGenerator, GameWorld (правила забега)
+├── entity/                Player, Enemy (состояния и бой), Direction, PlayerInput
+├── item/                  Item (неизменяемый), Items (каталог), Inventory
+├── render/                WorldRenderer, Sprites (нарезка листов), DirectionalAnimation
+└── ui/                    Hud, InventoryWindow, UiStyles (шрифты с кириллицей)
+```
+
+Поток кадра в `GameScreen`: клавиатура → `PlayerInput` → `GameWorld.update()` → `WorldRenderer` → `Hud` / `InventoryWindow`.
+
+Как добавить:
+- **предмет** — фабричный метод в `Items` и иконку в `Items.ALL_ICONS`;
+- **врага** — класс в `entity/`, спавн в `GameWorld.spawnEnemies()`, анимации в `Sprites`, отрисовку в `WorldRenderer`;
+- **тип комнаты** — значение в `RoomType` и его обработку в `LevelGenerator` / `GameWorld`.
+
+## Ресурсы
+
+Шрифт [Press Start 2P](https://fonts.google.com/specimen/Press+Start+2P) — лицензия SIL OFL 1.1 (`assets/fonts/OFL.txt`).
